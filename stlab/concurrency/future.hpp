@@ -1235,7 +1235,7 @@ auto apply_f_of_context(C &context) {
         else
             return context._f(std::move(context._results));
     }
-};
+}
 
 
 
