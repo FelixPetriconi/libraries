@@ -10,7 +10,7 @@ cache:
 addons:
   apt:
     sources:
-      - sourceline: deb http://apt.llvm.org/precise/ llvm-toolchain-precise-5.0 main
+      - sourceline: deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main
         key_url: http://apt.llvm.org/llvm-snapshot.gpg.key
       - ubuntu-toolchain-r-test
     packages:
@@ -160,7 +160,7 @@ matrix:
       addons:
         apt:
           sources:
-            - sourceline: deb http://apt.llvm.org/precise/ llvm-toolchain-precise-5.0 main
+            - sourceline: deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-5.0 main
               key_url: http://apt.llvm.org/llvm-snapshot.gpg.key
             - ubuntu-toolchain-r-test
           packages:
