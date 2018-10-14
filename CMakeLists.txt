@@ -49,11 +49,11 @@ add_library( stlab INTERFACE )
 add_library( stlab::stlab ALIAS stlab )
 
 #
-# stlab requires C++ 14 support, at a minimum. Setting the `cxx_std_14` compile
+# stlab requires C++ 17 support, at a minimum. Setting the `cxx_std_17` compile
 # features ensures that the corresponding C++ standard flag is populated in
 # targets linking to stlab.
 #
-target_compile_features( stlab INTERFACE cxx_std_14 )
+target_compile_features( stlab INTERFACE cxx_std_17 )
 
 #
 # The include directory for stlab can be expected to vary between build

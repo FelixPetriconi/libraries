@@ -79,6 +79,14 @@ using detected_t = typename detector<nonesuch, void, Op, Args...>::type;
 
 /**************************************************************************************************/
 
+template<typename T, template<typename...> class Template>
+struct is_instance_of_class_template : std::false_type {};
+
+template<template<typename...> class Template, typename ...Args>
+struct is_instance_of_class_template<Template<Args...>, Template> : std::true_type {};
+
+/**************************************************************************************************/
+
 } // namespace v1
 
 /**************************************************************************************************/

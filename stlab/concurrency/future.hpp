@@ -1221,57 +1221,23 @@ auto when_any(E executor, F&& f, future<T> arg, future<Ts>... args) {
 /**************************************************************************************************/
 
 namespace detail {
-template <typename T>
-struct value_storer {
-    template <typename C, typename F>
-    static void store(C& c, F&& f, size_t index) {
-        c._results = std::move(*std::forward<F>(f).get_try());
-        c._index = index;
+
+template <bool Indexed, typename R, typename C>
+auto apply_f_of_context(C &context) {
+    if constexpr(std::is_same_v<R, void>) {
+        if constexpr(Indexed)
+            return context._f(context._index);
+        else
+            return context._f();
+    } else {
+        if constexpr(Indexed)
+            return context._f(std::move(context._results), context._index);
+        else
+            return context._f(std::move(context._results));
     }
 };
 
-template <typename T>
-struct value_storer<std::vector<T>> {
-    template <typename C, typename F>
-    static void store(C& c, F&& f, size_t index) {
-        c._results[index] = std::move(*std::forward<F>(f).get_try());
-    }
-};
 
-template <bool Indxed, typename R>
-struct result_creator;
-
-template <>
-struct result_creator<true, void> {
-    template <typename C>
-    static auto go(C& context) {
-        return context._f(context._index);
-    }
-};
-
-template <>
-struct result_creator<false, void> {
-    template <typename C>
-    static auto go(C& context) {
-        return context._f();
-    }
-};
-
-template <typename R>
-struct result_creator<true, R> {
-    template <typename C>
-    static auto go(C& context) {
-        return context._f(std::move(context._results), context._index);
-    }
-};
-
-template <typename R>
-struct result_creator<false, R> {
-    template <typename C>
-    static auto go(C& context) {
-        return context._f(std::move(context._results));
-    }
-};
 
 template <typename F, bool Indexed, typename R>
 struct context_result {
@@ -1282,7 +1248,11 @@ struct context_result {
     size_t _index;
     F _f;
 
-    context_result(F f, size_t s) : _index(0), _f(std::move(f)) { init(_results, s); }
+    context_result(F f, size_t s)
+        : _index(0)
+        , _f(std::move(f)) {
+        init(_results, s);
+    }
 
     template <typename T>
     void init(std::vector<T>& v, size_t s) {
@@ -1294,12 +1264,18 @@ struct context_result {
 
     template <typename FF>
     void apply(FF&& f, size_t index) {
-        value_storer<R>::store(*this, std::forward<FF>(f), index);
+        if constexpr(is_instance_of_class_template<R, std::vector>::value) {
+            _results[index] = std::move(*std::forward<FF>(f).get_try());
+        }
+        else {
+            _results = std::move(*std::forward<FF>(f).get_try());
+            _index = index;
+        }
     }
 
     void apply(std::exception_ptr error, size_t) { _error = std::move(error); }
 
-    auto operator()() { return result_creator<Indexed, R>::go(*this); }
+    auto operator()() { return apply_f_of_context<Indexed, R>(*this); }
 };
 
 template <typename F, bool Indexed>
@@ -1317,7 +1293,7 @@ struct context_result<F, Indexed, void> {
 
     void apply(std::exception_ptr error, size_t) { _error = std::move(error); }
 
-    auto operator()() { return result_creator<Indexed, void>::go(*this); }
+    auto operator()() { return apply_f_of_context<Indexed, void>(*this); }
 };
 
 /**************************************************************************************************/
@@ -1326,11 +1302,11 @@ struct context_result<F, Indexed, void> {
  * This specialization is used for cases when only one ready future is enough to move forward.
  * In case of when_any, the first successfull future triggers the continuation. All others are
  * cancelled. In case of when_all, after the first error, this future cannot be fullfilled anymore
- * and so we cancel the all the others.
+ * and so we cancel all the others.
  */
 struct single_trigger {
     template <typename C, typename F>
-    static void go(C& context, F&& f, size_t index) {
+    static void execute(C& context, F&& f, size_t index) {
         auto before = context._single_event_trigger.test_and_set();
         if (!before) {
             for (auto& h : context._holds)
@@ -1349,13 +1325,13 @@ struct single_trigger {
  */
 struct all_trigger {
     template <typename C, typename F>
-    static void go(C& context, F&& f, size_t index) {
+    static void execute(C& context, F&& f, size_t index) {
         context.apply(std::forward<F>(f), index);
         if (--context._remaining == 0) context._f();
     }
 
     template <typename C>
-    static void go(C& context, std::exception_ptr error, size_t index) {
+    static void execute(C& context, std::exception_ptr error, size_t index) {
         if (--context._remaining == 0) {
             context.apply(std::move(error), index);
             context._f();
@@ -1380,12 +1356,12 @@ struct common_context : CR {
     }
 
     void failure(std::exception_ptr& error, size_t index) {
-        FailureCollector::go(*this, error, index);
+        FailureCollector::execute(*this, error, index);
     }
 
     template <typename FF>
     void done(FF&& f, size_t index) {
-        ResultCollector::go(*this, std::forward<FF>(f), index);
+        ResultCollector::execute(*this, std::forward<FF>(f), index);
     }
 };
 
@@ -1406,50 +1382,28 @@ void attach_tasks(size_t index, E&& executor, const std::shared_ptr<C>& context,
         });
 }
 
-template <typename R, typename T, typename C, typename Enabled = void>
-struct create_range_of_futures;
 
-template <typename R, typename T, typename C>
-struct create_range_of_futures<R, T, C, enable_if_copyable<T>> {
+template <typename R, typename T, typename C, typename E, typename F, typename I>
+auto create_range_of_futures(E executor, F&& f, I first, I last) {
+    assert(first != last);
 
-    template <typename E, typename F, typename I>
-    static auto do_it(E executor, F&& f, I first, I last) {
-        assert(first != last);
+    auto context = std::make_shared<C>(std::forward<F>(f), std::distance(first, last));
+    auto p = package<R()>(executor, [_c = context] { return _c->execute(); });
 
-        auto context = std::make_shared<C>(std::forward<F>(f), std::distance(first, last));
-        auto p = package<R()>(executor, [_c = context] { return _c->execute(); });
+    context->_f = std::move(p.first);
 
-        context->_f = std::move(p.first);
-
-        size_t index(0);
-        for (; first != last; ++first) {
+    size_t index(0);
+    for (; first != last; ++first) {
+        if constexpr(std::is_copy_constructible_v<T>) {
             attach_tasks(index++, executor, context, *first);
         }
-
-        return std::move(p.second);
-    }
-};
-
-template <typename R, typename T, typename C>
-struct create_range_of_futures<R, T, C, enable_if_not_copyable<T>> {
-
-    template <typename E, typename F, typename I>
-    static auto do_it(E executor, F&& f, I first, I last) {
-        assert(first != last);
-
-        auto context = std::make_shared<C>(std::forward<F>(f), std::distance(first, last));
-        auto p = package<R()>(executor, [_c = context] { return _c->execute(); });
-
-        context->_f = std::move(p.first);
-
-        size_t index(0);
-        for (; first != last; ++first) {
+        else {
             attach_tasks(index++, executor, context, std::forward<decltype(*first)>(*first));
         }
+    }
 
         return std::move(p.second);
-    }
-};
+  }
 
 /**************************************************************************************************/
 
@@ -1460,7 +1414,7 @@ struct create_range_of_futures<R, T, C, enable_if_not_copyable<T>> {
 template <
     typename E, // models task executor
     typename F, // models functional object
-    typename I> // models ForwardIterator that reference to a range of futures of the same type
+    typename I> // models ForwardIterator that references to a range of futures of the same type
 auto when_all(E executor, F f, std::pair<I, I> range) {
     using param_t = typename std::iterator_traits<I>::value_type::result_type;
     using result_t = typename detail::result_of_when_all_t<F, param_t>::result_type;
@@ -1476,7 +1430,7 @@ auto when_all(E executor, F f, std::pair<I, I> range) {
         return std::move(p.second);
     }
 
-    return detail::create_range_of_futures<result_t, param_t, context_t>::do_it(
+    return detail::create_range_of_futures<result_t, param_t, context_t>(
         std::move(executor), std::move(f), range.first, range.second);
 }
 
@@ -1485,7 +1439,7 @@ auto when_all(E executor, F f, std::pair<I, I> range) {
 template <
     typename E, // models task executor
     typename F, // models functional object
-    typename I> // models ForwardIterator that reference to a range of futures of the same type
+    typename I> // models ForwardIterator that references to a range of futures of the same type
 auto when_any(E executor, F&& f, std::pair<I, I> range) {
     using param_t = typename std::iterator_traits<I>::value_type::result_type;
     using result_t = typename detail::result_of_when_any_t<F, param_t>::result_type;
@@ -1500,7 +1454,7 @@ auto when_any(E executor, F&& f, std::pair<I, I> range) {
         return std::move(p.second);
     }
 
-    return detail::create_range_of_futures<result_t, param_t, context_t>::do_it(
+    return detail::create_range_of_futures<result_t, param_t, context_t>(
         std::move(executor), std::forward<F>(f), range.first, range.second);
 }
 

@@ -1,4 +1,4 @@
-set( stlab_AppleClang_base_flags -Wall -Wextra -Wpedantic -Werror -ftemplate-backtrace-limit=0 )
+set( stlab_AppleClang_base_flags -Wall -Wextra -Wpedantic -Werror -ftemplate-backtrace-limit=0 -DBOOST_NO_AUTO_PTR=1 )
 set( stlab_AppleClang_debug_flags -gdwarf-3 )
 set( stlab_AppleClang_coverage_flags --coverage )
 set( stlab_AppleClang_release_flags )

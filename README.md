@@ -35,8 +35,8 @@ First, you will need the following tools:
 
 - [`conan`](https://www.conan.io/) ([download](https://www.conan.io/downloads))
 - [`CMake`](https://cmake.org/) ([download](https://cmake.org/download/))
-- (Mac) Xcode 8.2.1 or later
-- (MSVC) Visual Studio 2015 (14.0) Update 3 or later
+- (Mac) Xcode 9.0.2 or later
+- (MSVC) Visual Studio 2017 (14.1) Update 5 or later
 
 `conan` and `cmake` are available on the Mac via [Homebrew](http://brew.sh). `cmake` is available on Windows via [`scoop`](http://scoop.sh/).
 
