@@ -3,7 +3,7 @@
  ## Requirements
  * C++ 17 compatible compiler
     * Visual Studio 2017 Update 5 or later
-    * Clang 3.9 or later
+    * Clang 5 or later
     * GCC 7 or later
     
  * boost.test (only for the unit tests)

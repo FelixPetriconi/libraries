@@ -7,8 +7,8 @@ if [ "$TRAVIS_OS_NAME" = "linux" ]; then
     --slave /usr/bin/g++ g++ /usr/bin/g++-7 \
     --slave /usr/bin/gcov gcov /usr/bin/gcov-7
   sudo update-alternatives \
-    --install /usr/bin/clang clang /usr/bin/clang-3.9 90 \
-    --slave /usr/bin/clang++ clang++ /usr/bin/clang++-3.9
+    --install /usr/bin/clang clang /usr/bin/clang-5.0 90 \
+    --slave /usr/bin/clang++ clang++ /usr/bin/clang++-5.0
   sudo update-alternatives --config gcc
   sudo update-alternatives --config clang
   if [ "$CXX" = "clang++" ]; then
