@@ -1,5 +1,5 @@
 sudo: required
-dist: trusty
+dist: xenial
 #group: deprecated-2017Q4
 language: cpp
 
@@ -10,7 +10,7 @@ cache:
 addons:
   apt:
     sources:
-      - sourceline: deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main
+      - sourceline: deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-6.0 main
         key_url: http://apt.llvm.org/llvm-snapshot.gpg.key
       - ubuntu-toolchain-r-test
     packages:
@@ -160,7 +160,7 @@ matrix:
       addons:
         apt:
           sources:
-            - sourceline: deb http://apt.llvm.org/trusty/ llvm-toolchain-trusty-6.0 main
+            - sourceline: deb http://apt.llvm.org/xenial/ llvm-toolchain-xenial-6.0 main
               key_url: http://apt.llvm.org/llvm-snapshot.gpg.key
             - ubuntu-toolchain-r-test
           packages:
