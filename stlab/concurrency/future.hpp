@@ -741,6 +741,10 @@ public:
 
     bool valid() const { return static_cast<bool>(_p); }
 
+    executor_t executor() const {
+        return _p->_executor;
+    }
+
     template <typename F>
     auto then(F&& f) const& {
         return _p->then(std::forward<F>(f));
@@ -831,6 +835,10 @@ public:
     inline friend bool operator!=(const future& x, const future& y) { return !(x == y); }
 
     bool valid() const { return static_cast<bool>(_p); }
+
+    executor_t executor() const {
+        return _p->_executor;
+    }
 
     template <typename F>
     auto then(F&& f) const& {
@@ -924,6 +932,10 @@ public:
     inline friend bool operator!=(const future& x, const future& y) { return !(x == y); }
 
     bool valid() const { return static_cast<bool>(_p); }
+
+    executor_t executor() const {
+        return _p->_executor;
+    }
 
     template <typename F>
     auto then(F&& f) && {
