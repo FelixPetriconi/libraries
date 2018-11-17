@@ -20,6 +20,7 @@
 
 #include "channel_test_helper.hpp"
 
+using namespace std;
 using namespace stlab;
 using namespace channel_test_helper;
 
@@ -232,35 +233,56 @@ BOOST_AUTO_TEST_SUITE_END()
 BOOST_AUTO_TEST_CASE(int_channel_one_value_different_buffer_sizes) {
     BOOST_TEST_MESSAGE("int channel one value different buffer sizes");
 
-    for (auto bs : {0, 1, 2, 10}) {
-        stlab::sender<int> send;
-        stlab::receiver<int> receive;
-        std::tie(send, receive) = stlab::channel<int>(stlab::default_executor);
-        std::atomic_int result{0};
+    {
+        for (auto bs : {0u, 1u, 2u, 10u}) {
+            stlab::sender<int> send;
+            stlab::receiver<int> receive;
+            std::tie(send, receive) = stlab::channel<int>(stlab::default_executor);
+            std::atomic_int result{0};
 
-        auto check = receive | (stlab::buffer_size(bs) & [&](int x) { result += x; });
+            auto check = receive | (stlab::buffer_size{bs} & [&](int x) { result += x; });
 
-        receive.set_ready();
-        send(1);
+            receive.set_ready();
+            send(1);
 
-        while (result < 1) {
-            std::this_thread::sleep_for(std::chrono::microseconds(1));
+            while (result < 1) {
+                std::this_thread::sleep_for(std::chrono::microseconds(1));
+            }
+
+            BOOST_REQUIRE_EQUAL(1, result);
         }
+    }
+    {
+        for (auto bs : {0u, 1u, 2u, 10u}) {
+            stlab::sender<int> send;
+            stlab::receiver<int> receive;
+            std::tie(send, receive) = stlab::channel<int>(stlab::default_executor);
+            std::atomic_int result{0};
 
-        BOOST_REQUIRE_EQUAL(1, result);
+            auto check = receive | ([&](int x) { result += x; } & stlab::buffer_size{bs});
+
+            receive.set_ready();
+            send(1);
+
+            while (result < 1) {
+                std::this_thread::sleep_for(std::chrono::microseconds(1));
+            }
+
+            BOOST_REQUIRE_EQUAL(1, result);
+        }
     }
 }
 
 BOOST_AUTO_TEST_CASE(int_channel_two_values_different_buffer_sizes) {
     BOOST_TEST_MESSAGE("int channel two values different buffer sizes");
 
-    for (auto bs : {0, 1, 2, 10}) {
+    for (auto bs : {0u, 1u, 2u, 10u}) {
         stlab::sender<int> send;
         stlab::receiver<int> receive;
         std::tie(send, receive) = stlab::channel<int>(stlab::default_executor);
         std::atomic_int result{0};
 
-        auto check = receive | (stlab::buffer_size(bs) & [&](int x) { result += x; });
+        auto check = receive | (stlab::buffer_size{bs} & [&](int x) { result += x; });
 
         receive.set_ready();
         send(1);
@@ -274,16 +296,38 @@ BOOST_AUTO_TEST_CASE(int_channel_two_values_different_buffer_sizes) {
     }
 }
 
+BOOST_AUTO_TEST_CASE(int_channel_concatenate_with_different_executor) {
+    BOOST_TEST_MESSAGE("int channel concatenate with different executor");
+
+
+    stlab::sender<int> send;
+    stlab::receiver<int> receive;
+    std::tie(send, receive) = stlab::channel<int>(stlab::default_executor);
+    std::atomic_int result{0};
+
+    auto check = receive | ( [&](int x) { result += x; } & executor{immediate_executor} );
+
+    receive.set_ready();
+    send(1);
+    send(1);
+
+    while (result < 2) {
+        std::this_thread::sleep_for(std::chrono::microseconds(1));
+    }
+
+    BOOST_REQUIRE_EQUAL(2, result);
+}
+
 BOOST_AUTO_TEST_CASE(int_channel_many_values_different_buffer_sizes) {
     BOOST_TEST_MESSAGE("int channel many values different buffer sizes");
 
-    for (auto bs : {0, 1, 2, 10}) {
+    for (auto bs : {0u, 1u, 2u, 10u}) {
         stlab::sender<int> send;
         stlab::receiver<int> receive;
         std::tie(send, receive) = stlab::channel<int>(stlab::default_executor);
         std::atomic_int result{0};
 
-        auto check = receive | (stlab::buffer_size(bs) & [&](int x) { result += x; });
+        auto check = receive | (stlab::buffer_size{bs} & [&](int x) { result += x; });
 
         receive.set_ready();
         for (auto i = 0; i < 10; ++i)

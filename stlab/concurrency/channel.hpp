@@ -1187,135 +1187,90 @@ auto zip(S s, R... r) {
 
 struct buffer_size {
     const std::size_t _value;
-
-    explicit buffer_size(std::size_t v) : _value(v) {}
 };
 
 /**************************************************************************************************/
 
-namespace detail {
+template <typename F>
+struct annotated_process  {
+    using process_type = F;
 
-struct annotations {
+    stlab::optional<executor_t> _executor;
+    stlab::optional<std::size_t> _buffer_size;
+    F _f;
+
+    annotated_process(const annotated_process&) = default;
+    annotated_process& operator=(const annotated_process&) = default;
+    annotated_process(annotated_process&&) = default;
+    annotated_process& operator=(annotated_process&&) = default;
+
+    annotated_process(executor e, std::size_t bs) : _executor(std::move(e._executor)), _buffer_size(bs)  {}
+    annotated_process(executor e, F f) : _executor(std::move(e._executor)), _f{std::move(f)} {}
+    annotated_process(std::size_t bs, F f) : _buffer_size(bs), _f{std::move(f)}  {}
+    explicit annotated_process(executor_task_pair<F> etp) : _executor(std::move(etp)._executor), _f{std::move(etp)._f}  {}
+};
+
+template <>
+struct annotated_process<void>  {
+    using process_type = void;
+
     stlab::optional<executor_t> _executor;
     stlab::optional<std::size_t> _buffer_size;
 
-    explicit annotations(executor_t e) : _executor(std::move(e)) {}
-    explicit annotations(std::size_t bs) : _buffer_size(bs) {}
+    annotated_process(const annotated_process&) = default;
+    annotated_process& operator=(const annotated_process&) = default;
+    annotated_process(annotated_process&&) = default;
+    annotated_process& operator=(annotated_process&&) = default;
+
+    annotated_process(executor e, std::size_t bs) : _executor(std::move(e._executor)), _buffer_size(bs)  {}
 };
 
-template <typename F>
-struct annotated_process {
-    using process_type = F;
 
-    F _f;
-    annotations _annotations;
-
-    annotated_process(F f, const executor& e) : _f(std::move(f)), _annotations(e._executor) {}
-    annotated_process(F f, const buffer_size& bs) : _f(std::move(f)), _annotations(bs._value) {}
-
-    annotated_process(F f, executor&& e) : _f(std::move(f)), _annotations(std::move(e._executor)) {}
-    annotated_process(F f, buffer_size&& bs) : _f(std::move(f)), _annotations(bs._value) {}
-    annotated_process(F f, annotations&& a) : _f(std::move(f)), _annotations(std::move(a)) {}
-};
-
-template <typename B, typename E>
-detail::annotations combine_bs_executor(B&& b, E&& e) {
-    detail::annotations result{b._value};
-    result._executor = std::forward<E>(e)._executor;
-    return result;
+inline annotated_process<void> operator&(buffer_size bs, executor e) {
+    return annotated_process<void>{std::move(e), bs._value };
 }
 
-} // namespace detail
-
-inline detail::annotations operator&(const buffer_size& bs, const executor& e) {
-    return detail::combine_bs_executor(bs, e);
-}
-
-inline detail::annotations operator&(const buffer_size& bs, executor&& e) {
-    return detail::combine_bs_executor(bs, std::move(e));
-}
-
-inline detail::annotations operator&(buffer_size&& bs, executor&& e) {
-    return detail::combine_bs_executor(std::move(bs), std::move(e));
-}
-
-inline detail::annotations operator&(buffer_size&& bs, const executor& e) {
-    return detail::combine_bs_executor(std::move(bs), e);
-}
-
-inline detail::annotations operator&(const executor& e, const buffer_size& bs) {
-    return detail::combine_bs_executor(bs, e);
-}
-
-inline detail::annotations operator&(const executor& e, buffer_size&& bs) {
-    return detail::combine_bs_executor(std::move(bs), e);
-}
-
-inline detail::annotations operator&(executor&& e, buffer_size&& bs) {
-    return detail::combine_bs_executor(std::move(bs), std::move(e));
+inline annotated_process<void> operator&(executor e, buffer_size bs) {
+    return annotated_process<void>{std::move(e), bs._value };
 }
 
 template <typename F>
-detail::annotated_process<F> operator&(const buffer_size& bs, F&& f) {
-    return detail::annotated_process<F>(std::forward<F>(f), bs);
+annotated_process<F> operator&(buffer_size bs, F f) {
+    return annotated_process<F>(bs._value, std::move(f));
 }
 
 template <typename F>
-detail::annotated_process<F> operator&(buffer_size&& bs, F&& f) {
-    return detail::annotated_process<F>(std::forward<F>(f), std::move(bs));
+annotated_process<F> operator&(F f, buffer_size bs) {
+    return annotated_process<F>(bs._value, std::move(f));
 }
 
 template <typename F>
-detail::annotated_process<F> operator&(F&& f, const buffer_size& bs) {
-    return detail::annotated_process<F>(std::forward<F>(f), bs);
-}
-
-template <typename F>
-detail::annotated_process<F> operator&(F&& f, buffer_size&& bs) {
-    return detail::annotated_process<F>(std::forward<F>(f), std::move(bs));
-}
-
-template <typename F>
-detail::annotated_process<F> operator&(const executor& e, F&& f) {
-    return detail::annotated_process<F>(std::forward<F>(f), e);
-}
-
-template <typename F>
-detail::annotated_process<F> operator&(executor&& e, F&& f) {
-    return detail::annotated_process<F>(std::forward<F>(f), std::move(e));
-}
-
-template <typename F>
-detail::annotated_process<F> operator&(F&& f, const executor& e) {
-    return detail::annotated_process<F>(std::forward<F>(f), e);
-}
-
-template <typename F>
-detail::annotated_process<F> operator&(F&& f, executor&& e) {
-    return detail::annotated_process<F>(std::forward<F>(f), std::move(e));
-}
-
-template <typename F>
-detail::annotated_process<F> operator&(detail::annotations&& a, F&& f) {
-    return detail::annotated_process<F>{std::forward<F>(f), std::move(a)};
-}
-
-template <typename F>
-detail::annotated_process<F> operator&(F&& f, detail::annotations&& a) {
-    return detail::annotated_process<F>{std::forward<F>(f), std::move(a)};
-}
-
-template <typename F>
-detail::annotated_process<F> operator&(detail::annotated_process<F>&& a, executor&& e) {
-    auto result{std::move(a)};
-    a._annotations._executor = std::move(e._executor);
+annotated_process<F> operator&(executor_task_pair<F> etp, buffer_size bs) {
+    annotated_process<F> result{std::move(etp)};
+    result._buffer_size = bs._value;
     return result;
 }
 
 template <typename F>
-detail::annotated_process<F> operator&(detail::annotated_process<F>&& a, buffer_size&& bs) {
-    auto result{std::move(a)};
-    a._annotations._buffer_size = bs._value;
+annotated_process<F> operator&(annotated_process<F> a, executor e) {
+    annotated_process<F> result{std::move(a)};
+    a._executor = std::move(e._executor);
+    return result;
+}
+
+template <typename F>
+annotated_process<F> operator&(annotated_process<F> a, buffer_size bs) {
+    annotated_process<F> result{std::move(a)};
+    a._buffer_size = bs._value;
+    return result;
+}
+
+template <typename F>
+annotated_process<F> operator&(annotated_process<void> a, F f) {
+    annotated_process<F> result;
+    result._f = std::move(f);
+    result._executor = std::move(a)._executor;
+    result._buffer_size = std::move(a)._buffer_size;
     return result;
 }
 
@@ -1391,22 +1346,30 @@ public:
     }
 
     template <typename F>
-    auto operator|(detail::annotated_process<F>&& ap) {
+    auto operator|(annotated_process<F> ap) {
+        static_assert(!std::is_same<F, void>::value, "Cannot create a new receiver w/o a process");
+
         if (!_p) throw channel_error(channel_error_codes::broken_channel);
 
         if (_ready) throw channel_error(channel_error_codes::process_already_running);
 
-        auto executor = ap._annotations._executor.value_or(_p->executor());
+        auto executor = std::move(ap)._executor.value_or(_p->executor());
         auto p = std::make_shared<detail::shared_process<detail::default_queue_strategy<T>, F,
                                                          detail::yield_type<F, T>, T>>(
-            executor, std::move(ap._f), _p);
+            executor, std::move(ap)._f, _p);
 
         _p->map(sender<T>(p));
 
-        if (ap._annotations._buffer_size) p->set_buffer_size(*ap._annotations._buffer_size);
+        if (ap._buffer_size) p->set_buffer_size(*ap._buffer_size);
 
         return receiver<detail::yield_type<F, T>>(std::move(p));
     }
+
+    template <typename F>
+    auto operator|(executor_task_pair<F> ap) {
+        return operator|(annotated_process<F>{std::move(ap)});
+    }
+
 
     auto operator|(sender<T> send) const {
         return operator|([send](auto&& x) { send(std::forward<decltype(x)>(x)); });
