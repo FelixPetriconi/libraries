@@ -39,7 +39,7 @@ inline namespace v1 {
 
 template <typename, typename = void>
 class sender;
-template <typename>
+template <typename, typename>
 class receiver;
 
 /**************************************************************************************************/
@@ -256,12 +256,12 @@ using receiver_t = typename std::remove_reference_t<T>::result_type;
 
 /**************************************************************************************************/
 
-template <typename T>
+template <typename T, typename U>
 struct shared_process_receiver {
     virtual ~shared_process_receiver() = default;
 
     virtual void map(sender<T>) = 0;
-    virtual void clear_to_send() = 0;
+    virtual void clear_to_send(stlab::optional<avoid<U>>) = 0;
     virtual void add_receiver() = 0;
     virtual void remove_receiver() = 0;
     virtual executor_t executor() const = 0;
@@ -307,18 +307,56 @@ constexpr bool has_process_state_v = is_detected_v<process_state_t, T>;
 
 template <typename T>
 auto get_process_state(const stlab::optional<T>& x)
-    -> std::enable_if_t<has_process_state_v<T>, process_state_scheduled> {
+-> std::enable_if_t<has_process_state_v<T>, process_state_scheduled> {
     return (*x).state();
 }
 
 template <typename T>
 auto get_process_state(const stlab::optional<T>&)
-    -> std::enable_if_t<!has_process_state_v<T>, process_state_scheduled> {
+-> std::enable_if_t<!has_process_state_v<T>, process_state_scheduled> {
     return await_forever;
 }
 
 /**************************************************************************************************/
 
+template <typename T>
+using process_notification_t = decltype(std::declval<const T&>().notification());
+
+template <typename T>
+constexpr bool has_process_notification_v = is_detected_v<process_notification_t, T>;
+
+template <typename T, typename U>
+auto process_notification(const stlab::optional<T>& x)
+-> std::enable_if_t<has_process_notification_v<T>, avoid<U>> {
+    return (*x).notification();
+}
+
+template <typename T, typename U>
+auto process_notification(const stlab::optional<T>&)
+-> std::enable_if_t<!has_process_notification_v<T>, avoid<U>> {
+    return avoid<U>{};
+}
+
+/**************************************************************************************************/
+
+template <typename T, typename Notification>
+using notify_process_t = decltype(std::declval<T&>().notify(std::declval<Notification>()));
+
+template <typename T, typename Notification>
+constexpr bool has_notify_process_v = is_detected_v<notify_process_t, T, Notification>;
+
+template <typename T, typename Notification>
+auto notify_process(stlab::optional<T>& x, stlab::optional<avoid<Notification>> notification)
+-> std::enable_if_t<has_notify_process_v<T, Notification>, void> {
+    if (x && notification) (*x).notify(*std::move(notification));
+}
+
+template <typename T, typename Notification>
+auto notify_process(stlab::optional<T>&, stlab::optional<avoid<Notification>>)
+-> std::enable_if_t<!has_notify_process_v<T, Notification>, void> {
+}
+
+/**************************************************************************************************/
 template <typename P>
 using process_set_error_t = decltype(std::declval<P&>().set_error(std::declval<std::exception_ptr>()));
 
@@ -327,13 +365,13 @@ constexpr bool has_set_process_error_v = is_detected_v<process_set_error_t, P>;
 
 template <typename P>
 auto set_process_error(P& process, std::exception_ptr&& error)
-    -> std::enable_if_t<has_set_process_error_v<P>, void> {
+-> std::enable_if_t<has_set_process_error_v<P>, void> {
     process.set_error(std::move(error));
 }
 
 template <typename P>
 auto set_process_error(P&, std::exception_ptr&&)
-    -> std::enable_if_t<!has_set_process_error_v<P>, void> {}
+-> std::enable_if_t<!has_set_process_error_v<P>, void> {}
 
 /**************************************************************************************************/
 
@@ -342,6 +380,30 @@ using process_yield_t = decltype(std::declval<T&>().yield());
 
 template <typename T>
 constexpr bool has_process_yield_v = is_detected_v<process_yield_t, T>;
+
+/**************************************************************************************************/
+
+template <typename T>
+using receiver_t = typename std::remove_reference_t<T>::result_type;
+
+template <typename F, typename Enabled = void>
+struct notification_impl;
+
+template <typename F>
+struct notification_impl<F, std::enable_if_t<has_process_notification_v<F>>>
+{
+    using type = process_notification_t<F>;
+};
+
+template <typename F>
+struct notification_impl<F, std::enable_if_t<!has_process_notification_v<F>>>
+{
+    using type = void;
+};
+
+template <typename F>
+using notification_t = typename notification_impl<F>::type;
+
 
 /**************************************************************************************************/
 
@@ -545,14 +607,14 @@ struct unordered_queue_strategy {
 
 /**************************************************************************************************/
 
-template <typename Q, typename T, typename R, typename... Args>
+template <typename Q, typename T, typename R, typename U, typename... Args>
 struct shared_process;
 
-template <typename Q, typename T, typename R, typename Arg, std::size_t I, typename... Args>
+template <typename Q, typename T, typename R, typename U, typename Arg, std::size_t I, typename... Args>
 struct shared_process_sender_indexed : public shared_process_sender<Arg> {
-    shared_process<Q, T, R, Args...>& _shared_process;
+    shared_process<Q, T, R, U, Args...>& _shared_process;
 
-    shared_process_sender_indexed(shared_process<Q, T, R, Args...>& sp) : _shared_process(sp) {}
+    shared_process_sender_indexed(shared_process<Q, T, R, U, Args...>& sp) : _shared_process(sp) {}
 
     void add_sender() override { ++_shared_process._sender_count; }
 
@@ -570,13 +632,13 @@ struct shared_process_sender_indexed : public shared_process_sender<Arg> {
         }
     }
 
-    template <typename U>
-    void enqueue(U&& u) {
+    template <typename V>
+    void enqueue(V&& value) {
         bool do_run;
         {
             std::unique_lock<std::mutex> lock(_shared_process._process_mutex);
             _shared_process._queue.template append<I>(
-                std::forward<U>(u)); // TODO (sparent) : overwrite here.
+                std::forward<V>(value)); // TODO (sparent) : overwrite here.
             do_run = !_shared_process._receiver_count && (!_shared_process._process_running ||
                                                           _shared_process._timeout_function_active);
 
@@ -595,11 +657,11 @@ struct shared_process_sender_indexed : public shared_process_sender<Arg> {
 template <typename Q, typename T, typename R, typename U, typename... Args>
 struct shared_process_sender_helper;
 
-template <typename Q, typename T, typename R, std::size_t... I, typename... Args>
-struct shared_process_sender_helper<Q, T, R, std::index_sequence<I...>, Args...>
-    : shared_process_sender_indexed<Q, T, R, Args, I, Args...>... {
-    shared_process_sender_helper(shared_process<Q, T, R, Args...>& sp) :
-        shared_process_sender_indexed<Q, T, R, Args, I, Args...>(sp)... {}
+template <typename Q, typename T, typename R, typename U, std::size_t... I, typename... Args>
+struct shared_process_sender_helper<Q, T, R, U, std::index_sequence<I...>, Args...>
+    : shared_process_sender_indexed<Q, T, R, U, Args, I, Args...>... {
+    shared_process_sender_helper(shared_process<Q, T, R, U, Args...>& sp) :
+        shared_process_sender_indexed<Q, T, R, U, Args, I, Args...>(sp)... {}
 };
 
 /**************************************************************************************************/
@@ -651,11 +713,11 @@ struct downstream<
 
 /**************************************************************************************************/
 
-template <typename Q, typename T, typename R, typename... Args>
+template <typename Q, typename T, typename R, typename Notification, typename... Args>
 struct shared_process
-    : shared_process_receiver<R>,
-      shared_process_sender_helper<Q, T, R, std::make_index_sequence<sizeof...(Args)>, Args...>,
-      std::enable_shared_from_this<shared_process<Q, T, R, Args...>> {
+    : shared_process_receiver<R, Notification>,
+      shared_process_sender_helper<Q, T, R, Notification, std::make_index_sequence<sizeof...(Args)>, Args...>,
+      std::enable_shared_from_this<shared_process<Q, T, R, Notification, Args...>> {
     static_assert((has_process_yield_v<T> && has_process_state_v<T>) ||
                       (!has_process_yield_v<T> && !has_process_state_v<T>),
                   "Processes that use .yield() must have .state() const");
@@ -668,6 +730,7 @@ struct shared_process
     using result = R;
     using queue_strategy = Q;
     using process_t = T;
+    using notification_t = Notification;
     using lock_t = std::unique_lock<std::mutex>;
 
     std::mutex _downstream_mutex;
@@ -693,23 +756,23 @@ struct shared_process
 
     std::atomic_size_t _process_buffer_size{1};
 
-    const std::tuple<std::shared_ptr<shared_process_receiver<Args>>...> _upstream;
+    const std::tuple<std::shared_ptr<shared_process_receiver<Args, Notification>>...> _upstream;
 
     template <typename E, typename F>
     shared_process(E&& e, F&& f) :
-        shared_process_sender_helper<Q, T, R, std::make_index_sequence<sizeof...(Args)>, Args...>(
+        shared_process_sender_helper<Q, T, R, Notification, std::make_index_sequence<sizeof...(Args)>, Args...>(
             *this),
         _executor(std::forward<E>(e)), _process(std::forward<F>(f)) {
         _sender_count = 1;
         _receiver_count = !std::is_same<result, void>::value;
     }
 
-    template <typename E, typename F, typename... U>
-    shared_process(E&& e, F&& f, U&&... u) :
-        shared_process_sender_helper<Q, T, R, std::make_index_sequence<sizeof...(Args)>, Args...>(
+    template <typename E, typename F, typename... V>
+    shared_process(E&& e, F&& f, V&&... value) :
+        shared_process_sender_helper<Q, T, R, Notification, std::make_index_sequence<sizeof...(Args)>, Args...>(
             *this),
         _executor(std::forward<E>(e)), _process(std::forward<F>(f)),
-        _upstream(std::forward<U>(u)...) {
+        _upstream(std::forward<V>(value)...) {
         _sender_count = sizeof...(Args);
         _receiver_count = !std::is_same<result, void>::value;
     }
@@ -756,15 +819,14 @@ struct shared_process
         if (do_run) run();
         if (do_final) {
             std::unique_lock<std::mutex> lock(_downstream_mutex);
-            _downstream.clear(); // This will propogate the close to anything downstream
+            _downstream.clear(); // This will propagate the close to anything downstream
             _process = nullopt;
         }
     }
 
-    void clear_to_send() override {
+    void clear_to_send(stlab::optional<avoid<Notification>> notification) override {
         {
             std::unique_lock<std::mutex> lock(_process_mutex);
-            // TODO FP I am not sure if this is the correct way to handle an closed upstream
             if (_process_final) {
                 return;
             }
@@ -774,12 +836,13 @@ struct shared_process
         {
             const auto ps = get_process_state(_process);
             std::unique_lock<std::mutex> lock(_process_mutex);
-            assert(_process_suspend_count > 0 && "Error: Try to unsuspend, but not suspended!");
+            assert(_process_suspend_count > 0 && "Error: Try to un-suspend, but not suspended!");
             --_process_suspend_count; // could be atomic?
             assert(_process_running && "ERROR (sparent) : clear_to_send but not running!");
             if (!_process_suspend_count) {
                 if (ps.first == process_state::yield || !_queue.empty() || _process_close_queue) {
                     do_run = true;
+                    detail::notify_process<process_t, Notification>(_process, stlab::optional<avoid<Notification>>(notification));
                 } else {
                     _process_running = false;
                     do_run = false;
@@ -787,7 +850,9 @@ struct shared_process
             }
         }
         // Somebody told me that his name was Bill
-        if (do_run) run();
+        if (do_run) {
+            run();
+        }
     }
 
     auto pop_from_queue() {
@@ -821,8 +886,9 @@ struct shared_process
         std::tie(message, do_cts, do_close) = pop_from_queue();
 
         std::size_t i = 0;
-        tuple_for_each(_upstream, [do_cts, &i](auto& u) {
-            if (do_cts[i] && u) u->clear_to_send();
+        auto notification = detail::process_notification<process_t, Notification>(_process);
+        tuple_for_each(_upstream, [do_cts, &i, &notification](auto& u) {
+            if (do_cts[i] && u) u->clear_to_send(notification);
             ++i;
         });
 
@@ -835,19 +901,19 @@ struct shared_process
                     do_close = true;
             } else
                 await_variant_args<process_t, Args...>(*_process, *message);
-				}
-				else {
-						do_close = true;
-				}
-				
-				if (do_close)
+        }
+        else {
+            do_close = true;
+        }
+
+        if (do_close)
             process_close(_process);
 
         return bool(message);
     }
 
-    template <typename U>
-    auto step() -> std::enable_if_t<has_process_yield_v<U>> {
+    template <typename V>
+    auto step() -> std::enable_if_t<has_process_yield_v<V>> {
         // in case that the timeout function is just been executed then we have to re-schedule
         // the current run
         lock_t lock(_timeout_function_control, std::try_to_lock);
@@ -943,18 +1009,18 @@ struct shared_process
         What is this code doing, if we don't have a yield then it also assumes no await?
     */
 
-    template <typename U>
-    auto step() -> std::enable_if_t<!has_process_yield_v<U>> {
+    template <typename V>
+    auto step() -> std::enable_if_t<!has_process_yield_v<V>> {
         using queue_t = typename Q::value_type;
         stlab::optional<queue_t> message;
         std::array<bool, sizeof...(Args)> do_cts;
         bool do_close = false;
 
         std::tie(message, do_cts, do_close) = pop_from_queue();
-
         std::size_t i = 0;
-        tuple_for_each(_upstream, [do_cts, &i](auto& u) {
-            if (do_cts[i] && u) u->clear_to_send();
+        auto notification = detail::process_notification<process_t, notification_t>(_process);
+        tuple_for_each(_upstream, [do_cts, &i, &notification](auto &u) {
+            if (do_cts[i] && u) u->clear_to_send(notification);
             ++i;
         });
 
@@ -1019,7 +1085,7 @@ struct shared_process
 
         _downstream.send(n, std::forward<A>(args)...);
 
-        clear_to_send(); // unsuspend this process
+        clear_to_send({}); // unsuspend this process
     }
 
     void map(sender<result> f) override {
@@ -1074,12 +1140,13 @@ struct channel_combiner {
         using queue_t = typename shared_process_t::queue_strategy;
         using process_t = typename shared_process_t::process_t;
         using result_t = typename shared_process_t::result;
+        using notif_t = typename shared_process_t::notification_t;
 
         (void)std::initializer_list<int>{
             (std::get<I>(upstream_receiver_processes)
                  ->map(sender<R>(std::dynamic_pointer_cast<shared_process_sender<R>>(
                      std::dynamic_pointer_cast<
-                         shared_process_sender_indexed<queue_t, process_t, result_t, R, I, R...>>(
+                         shared_process_sender_indexed<queue_t, process_t, result_t, notif_t, R, I, R...>>(
                          p)))),
              0)...};
     }
@@ -1102,20 +1169,21 @@ struct channel_combiner {
         using type = yield_type<F, receiver_t<R>...>;
     };
 
-    template <typename M, typename S, typename F, typename... R>
-    static auto merge_helper(S&& s, F&& f, R&&... upstream_receiver) {
+    template <typename M, typename Executor, typename F, typename... UpstreamReceiver>
+    static auto merge_helper(Executor&& executor, F&& f, UpstreamReceiver&&... upstream_receiver) {
 
-        using result_t = typename merge_result<M, F, R...>::type;
+        using result_t = typename merge_result<M, F, UpstreamReceiver...>::type;
+        using notif_t = notification_t<F>;
 
         auto upstream_receiver_processes = std::make_tuple(upstream_receiver._p...);
         auto merge_process = std::make_shared<
-            shared_process<typename M::template strategy_type<R...>, F, result_t, receiver_t<R>...>>(
-            std::forward<S>(s), std::forward<F>(f), upstream_receiver._p...);
+            shared_process<typename M::template strategy_type<UpstreamReceiver...>, F, result_t, notif_t, receiver_t<UpstreamReceiver>...>>(
+            std::forward<Executor>(executor), std::forward<F>(f), upstream_receiver._p...);
 
         map_as_sender<decltype(merge_process), decltype(upstream_receiver_processes),
-            receiver_t<R>...>(merge_process, upstream_receiver_processes);
+            receiver_t<UpstreamReceiver>...>(merge_process, upstream_receiver_processes);
 
-        return receiver<result_t>(std::move(merge_process));
+        return receiver<result_t, notif_t>(std::move(merge_process));
     }
 };
 
@@ -1133,51 +1201,51 @@ struct zip_helper
 
 /**************************************************************************************************/
 
-template <typename T, typename S>
-auto channel(S s) -> std::pair<sender<T>, receiver<T>> {
+template <typename T, typename Executor, typename Notification = void>
+auto channel(Executor executor) -> std::pair<sender<T>, receiver<T, Notification>> {
     auto p =
-        std::make_shared<detail::shared_process<detail::default_queue_strategy<T>, identity, T, T>>(
-            std::move(s), identity());
-    return std::make_pair(sender<T>(p), receiver<T>(p));
+        std::make_shared<detail::shared_process<detail::default_queue_strategy<T>, identity, T, Notification, T>>(
+            std::move(executor), identity());
+    return std::make_pair(sender<T>(p), receiver<T, Notification>(p));
 }
 
 /**************************************************************************************************/
 
-template <typename S, typename F, typename... R>
-[[deprecated("Use zip_with")]] auto join(S s, F f, R... upstream_receiver) {
-    return detail::channel_combiner::merge_helper<zip_with_t, S, F, R...>(
-            std::move(s), std::move(f), std::forward<R>(upstream_receiver)...);
+template <typename Executor, typename F, typename... UpstreamReceiver>
+[[deprecated("Use zip_with")]] auto join(Executor executor, F f, UpstreamReceiver... upstream_receiver) {
+    return detail::channel_combiner::merge_helper<zip_with_t, Executor, F, UpstreamReceiver...>(
+            std::move(executor), std::move(f), std::forward<UpstreamReceiver>(upstream_receiver)...);
 }
 
 /**************************************************************************************************/
 
-template <typename S, typename F, typename... R>
-[[deprecated("Use merge_channel<unordered_t>")]] auto merge(S s, F f, R... upstream_receiver) {
-    return detail::channel_combiner::merge_helper<unordered_t, S, F, R...>(
-        std::move(s), std::move(f), std::move(upstream_receiver)...);
+template <typename Executor, typename F, typename... UpstreamReceiver>
+[[deprecated("Use merge_channel<unordered_t>")]] auto merge(Executor executor, F f, UpstreamReceiver... upstream_receiver) {
+    return detail::channel_combiner::merge_helper<unordered_t, Executor, F, UpstreamReceiver...>(
+        std::move(executor), std::move(f), std::move(upstream_receiver)...);
 }
 
 /**************************************************************************************************/
 
-template <typename M, typename S, typename F, typename... R>
-auto merge_channel(S s, F f, R... upstream_receiver) {
-    return detail::channel_combiner::merge_helper<M, S, F, R...>(
-        std::move(s), std::move(f), std::move(upstream_receiver)...);
+template <typename M, typename Executor, typename F, typename... UpstreamReceiver>
+auto merge_channel(Executor executor, F f, UpstreamReceiver... upstream_receiver) {
+    return detail::channel_combiner::merge_helper<M, Executor, F, UpstreamReceiver...>(
+        std::move(executor), std::move(f), std::move(upstream_receiver)...);
 }
 
 /**************************************************************************************************/
 
-template <typename S, typename F, typename... R>
-auto zip_with(S s, F f, R... upstream_receiver) {
-    return detail::channel_combiner::merge_helper<zip_with_t, S, F, R...>(std::move(s), std::move(f),
-                                               std::forward<R>(upstream_receiver)...);
+template <typename Executor, typename F, typename... UpstreamReceiver>
+auto zip_with(Executor executor, F f, UpstreamReceiver... upstream_receiver) {
+    return detail::channel_combiner::merge_helper<zip_with_t, Executor, F, UpstreamReceiver...>(std::move(executor), std::move(f),
+                                               std::forward<UpstreamReceiver>(upstream_receiver)...);
 }
 
 /**************************************************************************************************/
 
-template <typename S, typename... R>
-auto zip(S s, R... r) {
-    return zip_with(std::move(s), detail::zip_helper{}, std::move(r)...);
+template <typename Executor, typename... UpstreamReceiver>
+auto zip(Executor executor, UpstreamReceiver... upstream_receiver) {
+    return zip_with(std::move(executor), detail::zip_helper{}, std::move(upstream_receiver)...);
 }
 
 // template <typename S, typename F, typename... R>
@@ -1321,9 +1389,9 @@ detail::annotated_process<F> operator&(detail::annotated_process<F>&& a, buffer_
 
 /**************************************************************************************************/
 
-template <typename T>
+template <typename T, typename Notification = void>
 class receiver {
-    using ptr_t = std::shared_ptr<detail::shared_process_receiver<T>>;
+    using ptr_t = std::shared_ptr<detail::shared_process_receiver<T, Notification>>;
 
     ptr_t _p;
     bool _ready = false;
@@ -1331,11 +1399,11 @@ class receiver {
     template <typename U, typename>
     friend class sender;
 
-    template <typename U>
+    template <typename U, typename V>
     friend class receiver;
 
-    template <typename U, typename V>
-    friend auto channel(V) -> std::pair<sender<U>, receiver<U>>;
+    template <typename U, typename V, typename W>
+    friend auto channel(V) -> std::pair<sender<U>, receiver<U, W>>;
 
     friend struct detail::channel_combiner;
 
@@ -1384,10 +1452,10 @@ public:
         if (_ready) throw channel_error(channel_error_codes::process_already_running);
 
         auto p = std::make_shared<detail::shared_process<detail::default_queue_strategy<T>, F,
-                                                         detail::yield_type<F, T>, T>>(
+                                                         detail::yield_type<F, T>, detail::notification_t<F>, T>>(
             _p->executor(), std::forward<F>(f), _p);
         _p->map(sender<T>(p));
-        return receiver<detail::yield_type<F, T>>(std::move(p));
+        return receiver<detail::yield_type<F, T>, detail::notification_t<F>>(std::move(p));
     }
 
     template <typename F>
@@ -1398,14 +1466,14 @@ public:
 
         auto executor = ap._annotations._executor.value_or(_p->executor());
         auto p = std::make_shared<detail::shared_process<detail::default_queue_strategy<T>, F,
-                                                         detail::yield_type<F, T>, T>>(
+                                                         detail::yield_type<F, T>, detail::notification_t<F>, T>>(
             executor, std::move(ap._f), _p);
 
         _p->map(sender<T>(p));
 
         if (ap._annotations._buffer_size) p->set_buffer_size(*ap._annotations._buffer_size);
 
-        return receiver<detail::yield_type<F, T>>(std::move(p));
+        return receiver<detail::yield_type<F, T>, detail::notification_t<F>>(std::move(p));
     }
 
     auto operator|(sender<T> send) const {
@@ -1420,11 +1488,11 @@ class sender<T, enable_if_copyable<T>> {
     using ptr_t = std::weak_ptr<detail::shared_process_sender<T>>;
     ptr_t _p;
 
-    template <typename U>
+    template <typename U, typename W>
     friend class receiver;
 
-    template <typename U, typename V>
-    friend auto channel(V) -> std::pair<sender<U>, receiver<U>>;
+    template <typename U, typename V, typename W>
+    friend auto channel(V) -> std::pair<sender<U>, receiver<U, W>>;
 
     friend struct detail::channel_combiner;
 
@@ -1481,11 +1549,11 @@ class sender<T, enable_if_not_copyable<T>> {
     using ptr_t = std::weak_ptr<detail::shared_process_sender<T>>;
     ptr_t _p;
 
-    template <typename U>
+    template <typename U, typename W>
     friend class receiver;
 
-    template <typename U, typename V>
-    friend auto channel(V) -> std::pair<sender<U>, receiver<U>>;
+    template <typename U, typename V, typename W>
+    friend auto channel(V) -> std::pair<sender<U>, receiver<U, W>>;
 
     friend struct detail::channel_combiner;
 
