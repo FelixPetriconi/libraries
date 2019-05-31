@@ -8,6 +8,7 @@ target_sources( stlab INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/main_executor.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/optional.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/progress.hpp
+	${CMAKE_CURRENT_SOURCE_DIR}/router.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/system_timer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/task.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/traits.hpp
@@ -24,6 +25,7 @@ target_sources( stlab INTERFACE
     include/stlab/concurrency/main_executor.hpp
     include/stlab/concurrency/optional.hpp
     include/stlab/concurrency/progress.hpp
+	include/stlab/concurrency/router.hpp
     include/stlab/concurrency/system_timer.hpp
     include/stlab/concurrency/task.hpp
     include/stlab/concurrency/traits.hpp

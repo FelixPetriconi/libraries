@@ -39,6 +39,15 @@ add_test( NAME stlab.test.future COMMAND stlab.test.future )
 
 ################################################################################
 
+add_executable( stlab.test.router
+  router_test.cpp 
+  main.cpp )
+
+target_link_libraries( stlab.test.router PUBLIC stlab::testing )
+add_test( NAME stlab.test.router COMMAND stlab.test.router )
+
+################################################################################
+
 add_executable( stlab.test.serial_queue
   serial_queue_test.cpp )
 
@@ -88,9 +97,10 @@ add_test( NAME stlab.test.traits COMMAND stlab.test.traits )
 #
 set_target_properties(
   stlab.test.channel
-  stlab.test.future
-  stlab.test.serial_queue
   stlab.test.cow
+  stlab.test.future
+  stlab.test.router
+  stlab.test.serial_queue
   stlab.test.task
   stlab.test.tuple
   stlab.test.traits
@@ -112,9 +122,10 @@ ProcessorCount(nProcessors)
 if(nProcessors)
   set_tests_properties(
     stlab.test.channel
-    stlab.test.future
-    stlab.test.serial_queue
     stlab.test.cow
+	stlab.test.future
+	stlab.test.router
+    stlab.test.serial_queue
     stlab.test.task
     stlab.test.tuple
     PROPERTIES PROCESSORS ${nProcessors})
