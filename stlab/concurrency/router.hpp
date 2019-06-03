@@ -10,8 +10,6 @@
 #define STLAB_CONCURRENCY_ROUTER_HPP
 
 #include <algorithm>
-#include <memory>
-#include <stdexcept>
 #include <utility>
 #include <vector>
 
@@ -55,12 +53,12 @@ public:
         _router_function(std::move(router_function)), _routes{
                                                           std::make_pair(route_pairs.first,
                                                                          route_pairs.second)...} {
+        assert(std::is_sorted(_routes.cbegin(), _routes.cend(),
+                              [](const auto& x, const auto& y) { return x.first < y.first; }));
         set_ready();
     }
 
     void set_ready() {
-        std::sort(_routes.begin(), _routes.end(),
-                  [](const auto& x, const auto& y) { return x.first < y.first; });
         for (auto& route : _routes)
             route.second.second.set_ready();
         _ready = true;
@@ -81,10 +79,16 @@ public:
     template <typename Ex>
     receiver<T> add_route(K key, Ex executor) {
         assert(!_ready);
-        assert(!route(key));
+
         channel_t<T> ch = channel<T>(executor);
         auto result = ch.second;
-        _routes.emplace_back(key, std::move(ch));
+        auto insert_it = std::lower_bound(_routes.begin(), _routes.end(), key,
+                                          [](const auto& p, const auto& k) { return p.first < k; });
+
+        assert(insert_it == _routes.end() || insert_it->first != key);
+
+        _routes.insert(insert_it, std::make_pair(key, std::move(ch)));
+
         return result;
     }
 
