@@ -31,7 +31,7 @@ int main() {
 
     auto sq = serial_queue_t{default_executor};
 
-    auto router = stlab::router<std::string, std::string>(sq.executor(), [](const std::string& t) {
+    auto router = stlab::make_router<std::string, std::string>(sq.executor(), [](const std::string& t) {
         std::vector<std::string> result;
         if (t.find("hello") != std::string::npos) result.push_back("contains hello");
         if (t.find("hello") != std::string::npos) result.push_back("contains hello");
