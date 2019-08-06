@@ -203,6 +203,8 @@ struct main_executor_type {
 
 constexpr auto main_executor = detail::main_executor_type{};
 
+auto stlab_is_executor [[maybe_unused]] (decltype(main_executor)) -> std::true_type;
+
 /**************************************************************************************************/
 
 } // namespace v1

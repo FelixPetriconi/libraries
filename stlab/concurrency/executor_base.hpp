@@ -40,8 +40,6 @@ constexpr bool is_executor = decltype(stlab_is_executor(std::declval<T>()))::val
 
 /**************************************************************************************************/
 
-
-
 }
 
 }
@@ -100,6 +98,7 @@ struct executor {
     executor_t _executor;
 };
 
+/*
 template <typename F>
 struct executor_task_pair {
     executor_t _executor;
@@ -115,7 +114,7 @@ template <typename F>
 executor_task_pair<F> operator&(F&& f, executor e) {
     return executor_task_pair<F>{std::move(e._executor), std::forward<F>(f)};
 }
-
+*/
 
 /**************************************************************************************************/
 

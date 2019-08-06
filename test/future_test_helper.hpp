@@ -54,15 +54,11 @@ private:
     size_t _id = no; // only used for debugging purpose
 };
 
+auto stlab_is_executor [[maybe_unused]] (custom_scheduler<0>) -> std::true_type;
+auto stlab_is_executor [[maybe_unused]] (custom_scheduler<1>) -> std::true_type;
 
-
-template <std::size_t I>
-stlab::executor_t make_executor() {
-    return [_executor = custom_scheduler<I>{}](stlab::task<void()> f) mutable {
-        _executor(std::move(f));
-    };
-}
-
+constexpr auto custom_scheduler_0 = custom_scheduler<0>{};
+constexpr auto custom_scheduler_1 = custom_scheduler<1>{};
 
 class test_exception : public std::exception {
     std::string _error;

@@ -65,26 +65,71 @@ BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_same_scheduler_then_on_rvalue) {
     {
         atomic_int p{0};
 
-        sut = async(make_executor<0>(), [& _p = p] { _p = 42; }) | [& _p = p] { _p += 42; };
+        sut = async([& _p = p] { _p = 42; }) | [& _p = p] { _p += 42; };
 
         check_valid_future(sut);
         wait_until_future_completed(sut);
 
         BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
     }
 
     {
         atomic_int p{0};
 
-        sut = async(make_executor<0>(), [& _p = p] { _p = 42; }) | [& _p = p] { _p += 42; } & default_executor;
+        sut = async([] { return 42; }) | [&_p = p](auto p) { _p = p; };
+
+        check_valid_future(sut);
+        wait_until_future_completed(sut);
+
+        BOOST_REQUIRE_EQUAL(42, p);
+    }
+
+    {
+        atomic_int p{0};
+
+        sut = async([& _p = p] { _p = 42; } & custom_scheduler_0) | [& _p = p] { _p += 42; };
 
         check_valid_future(sut);
         wait_until_future_completed(sut);
 
         BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+        BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
     }
+
+    {
+        atomic_int p{0};
+
+        sut = async([] { return 42; } & custom_scheduler_0) | [&_p = p](auto p) { _p = p; };
+
+        check_valid_future(sut);
+        wait_until_future_completed(sut);
+
+        BOOST_REQUIRE_EQUAL(42, p);
+    }
+
+    {
+        atomic_int p{0};
+
+        sut = async([& _p = p] { _p = 42; } & custom_scheduler_0) | [& _p = p] { _p += 42; } & default_executor;
+
+        check_valid_future(sut);
+        wait_until_future_completed(sut);
+
+        BOOST_REQUIRE_EQUAL(42 + 42, p);
+        BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
+    }
+
+    {
+        atomic_int p{0};
+
+        sut = async([] { return 42; } & custom_scheduler_0) | [&_p = p](auto p) { _p = p; } & default_executor;
+
+        check_valid_future(sut);
+        wait_until_future_completed(sut);
+
+        BOOST_REQUIRE_EQUAL(42, p);
+    }
+
 }
 
 //BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_same_scheduler_then_on_lvalue) {

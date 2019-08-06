@@ -750,10 +750,10 @@ public:
 
     bool valid() const { return static_cast<bool>(_p); }
 
-//    template <typename F>
-//    auto then(F&& f) const& {
-//        return _p->then(std::forward<F>(f));
-//    }
+    template <typename F>
+    auto operator|(F&& f) const& {
+        return _p->then(std::forward<F>(f));
+    }
 
     template <typename F, typename E>
     auto operator|(std::pair<F, E> fe) const& {
@@ -817,7 +817,12 @@ public:
 
     template <typename F>
     auto operator^(F&& f) && {
-        return std::move(*this).operator^(std::forward<F>(f));
+        return std::move(*this) ^ std::forward<F>(f);
+    }
+
+    template <typename F, typename E>
+    auto operator^(std::pair<F, E> fe) && {
+        return _p->recover_r(unique_usage(_p), std::move(fe).second, std::move(fe).first);
     }
 
 //    template <typename E, typename F>
@@ -1655,41 +1660,39 @@ auto when_any(E executor, F&& f, std::pair<I, I> range) {
 
 /**************************************************************************************************/
 
-template <typename F, typename... Args>
-auto async(F&& f, Args&&... args)
--> std::enable_if_t<!stlab::is_executor<std::decay_t<F>>, future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>>> {
-    using result_type = std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>;
-
-    auto p = package<result_type()>(
-        immediate_executor, std::bind<result_type>(
-            [_f = std::forward<F>(f)](
-                unwrap_reference_t<std::decay_t<Args>>&... args) -> result_type {
-                return _f(move_if<!is_reference_wrapper_v<std::decay_t<Args>>>(args)...);
-            },
-            std::forward<Args>(args)...));
-
-    immediate_executor(std::move(p.first));
-
-    return std::move(p.second);
-}
-
-template <typename E, typename F, typename... Args>
-auto async(E executor, F&& f, Args&&... args)
-    -> future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>> {
+namespace detail
+{
+template<typename E, typename F, typename... Args>
+auto async(E executor, F &&f, Args &&... args)
+-> future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>> {
     using result_type = std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>;
 
     auto p = package<result_type()>(
         executor, std::bind<result_type>(
-                      [_f = std::forward<F>(f)](
-                          unwrap_reference_t<std::decay_t<Args>>&... args) -> result_type {
-                          return _f(move_if<!is_reference_wrapper_v<std::decay_t<Args>>>(args)...);
-                      },
-                      std::forward<Args>(args)...));
+            [_f = std::forward<F>(f)](
+                unwrap_reference_t<std::decay_t<Args>> &... args) -> result_type {
+                return _f(move_if<!is_reference_wrapper_v<std::decay_t<Args>>>(args)...);
+            },
+            std::forward<Args>(args)...));
 
     executor(std::move(p.first));
 
     return std::move(p.second);
 }
+}
+template <typename F, typename E, typename... Args>
+auto async(std::pair<F, E> fe, Args&&... args)
+-> std::enable_if_t<stlab::is_executor<std::decay_t<E>>, future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>>> {
+    return detail::async(std::move(fe).second, std::move(fe).first, std::forward<Args>(args)...);
+}
+
+template <typename F, typename... Args>
+auto async(F&& f, Args&&... args)
+-> std::enable_if_t<!stlab::is_executor<std::decay_t<F>>, future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>>> {
+    return detail::async(immediate_executor, std::forward<F>(f), std::forward<Args>(args)...);
+}
+
+
 
 /**************************************************************************************************/
 
