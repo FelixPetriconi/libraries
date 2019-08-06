@@ -164,14 +164,14 @@ inline void blocking_get(future<void> x) {
     bool flag{false};
     std::condition_variable condition;
     std::mutex m;
-    auto hold = std::move(x).recover(immediate_executor, [&](auto&& r) {
+    auto hold = std::move(x) ^ [&](auto&& r) {
         if (auto ex = std::forward<decltype(r)>(r).exception(); ex) error = ex;
         {
             std::unique_lock<std::mutex> lock(m);
             flag = true;
             condition.notify_one();
         }
-    });
+    };
     {
         std::unique_lock<std::mutex> lock(m);
         while (!flag) {
@@ -185,7 +185,7 @@ inline void blocking_get(future<void> x) {
 inline bool blocking_get(future<void> x, const std::chrono::nanoseconds& timeout) {
     auto state = std::make_shared<detail::shared_state>();
     auto hold =
-        std::move(x).recover(immediate_executor, [_weak_state = make_weak_ptr(state)](auto&& r) {
+        std::move(x) ^ [_weak_state = make_weak_ptr(state)](auto&& r) {
             auto state = _weak_state.lock();
             if (!state) {
                 return;
@@ -196,7 +196,7 @@ inline bool blocking_get(future<void> x, const std::chrono::nanoseconds& timeout
                 state->flag = true;
                 state->condition.notify_one();
             }
-        });
+        };
 
     {
         std::unique_lock<std::mutex> lock(state->m);

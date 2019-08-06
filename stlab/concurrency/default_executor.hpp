@@ -308,6 +308,8 @@ struct default_executor_type {
 
 constexpr auto default_executor = detail::default_executor_type{};
 
+auto stlab_is_executor [[maybe_unused]] (decltype(default_executor)) -> std::true_type;
+
 /**************************************************************************************************/
 
 } // namespace v1
