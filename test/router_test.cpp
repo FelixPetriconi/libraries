@@ -6,6 +6,9 @@
 
 /**************************************************************************************************/
 
+
+#include <boost/test/unit_test.hpp>
+
 #include <stlab/concurrency/channel.hpp>
 #include <stlab/concurrency/default_executor.hpp>
 #include <stlab/concurrency/router.hpp>
@@ -19,7 +22,7 @@ using namespace std;
 using namespace std::placeholders;
 using namespace stlab;
 
-int main() {
+BOOST_AUTO_TEST_CASE(initial_router_test) {
     sender<std::string> send;
     receiver<std::string> receive;
 
@@ -80,5 +83,4 @@ int main() {
     while (done.load() != 0) {
         std::this_thread::sleep_for(chrono::milliseconds(1));
     }
-    return 0;
 }
