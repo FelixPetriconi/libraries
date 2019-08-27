@@ -60,6 +60,19 @@ auto stlab_is_executor [[maybe_unused]] (custom_scheduler<1>) -> std::true_type;
 constexpr auto custom_scheduler_0 = custom_scheduler<0>{};
 constexpr auto custom_scheduler_1 = custom_scheduler<1>{};
 
+auto stlab_is_executor [[maybe_unused]] (decltype(custom_scheduler_0)) -> std::true_type;
+auto stlab_is_executor [[maybe_unused]] (decltype(custom_scheduler_1)) -> std::true_type;
+
+template<std::size_t N>
+auto& make_executor() {
+    if constexpr (N == 0) {
+        return custom_scheduler_0;
+    }
+    else if constexpr (N == 1) {
+        return custom_scheduler_1;
+    }
+}
+
 class test_exception : public std::exception {
     std::string _error;
 

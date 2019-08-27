@@ -679,6 +679,10 @@ class packaged_task {
     friend auto package(E, F&&) -> std::pair<detail::packaged_task_from_signature_t<Signature>,
                                               future<detail::result_of_t_<Signature>>>;
 
+    template <typename Sig, typename F>
+    friend auto package(F&&)
+    -> std::pair<detail::packaged_task_from_signature_t<Sig>, future<detail::result_of_t_<Sig>>>;
+
     template <typename Signature, typename E, typename F>
     friend auto package_with_broken_promise(E, F&&)
         -> std::pair<detail::packaged_task_from_signature_t<Signature>,
@@ -730,6 +734,10 @@ class [[nodiscard]] future<T, enable_if_copyable<T>> {
     friend auto package(E, F&&) -> std::pair<detail::packaged_task_from_signature_t<Signature>,
                                              future<detail::result_of_t_<Signature>>>;
 
+    template <typename Sig, typename F>
+    friend auto package(F&&)
+    -> std::pair<detail::packaged_task_from_signature_t<Sig>, future<detail::result_of_t_<Sig>>>;
+
     template <typename Signature, typename E, typename F>
     friend auto package_with_broken_promise(E, F &&)
         -> std::pair<detail::packaged_task_from_signature_t<Signature>,
@@ -763,64 +771,29 @@ public:
         return _p->then(std::move(fe).second, std::move(fe).first);
     }
 
-//    template <typename E, typename F>
-//    auto then(E&& executor, F&& f) const& {
-//        return _p->then(std::forward<E>(executor), std::forward<F>(f));
-//    }
-//
-//    template <typename F>
-//    auto operator|(executor_task_pair<F> etp) const& {
-//        return then(std::move(etp)._executor, std::move(etp)._f);
-//    }
-
-//    template <typename F>
-//    auto then(F&& f) && {
-//        return _p->then_r(unique_usage(_p), std::forward<F>(f));
-//    }
-
     template <typename F>
     auto operator|(F&& f) && {
         return _p->then_r(unique_usage(_p), std::forward<F>(f));
     }
-
-//    template <typename E, typename F>
-//    auto then(E&& executor, F&& f) && {
-//        return _p->then_r(unique_usage(_p), std::forward<E>(executor), std::forward<F>(f));
-//    }
 
     template <typename F, typename E>
     auto operator|(std::pair<F, E> fe) && {
         return _p->then(std::move(fe).second, std::move(fe).first);
     }
 
-//    template <typename F>
-//    auto recover(F&& f) const& {
-//        return _p->recover(std::forward<F>(f));
-//    }
-
     template <typename F>
     auto operator^(F&& f) const& {
         return _p->recover(std::forward<F>(f));
     }
 
-//    template <typename E, typename F>
-//    auto recover(E&& executor, F&& f) const& {
-//        return _p->recover(std::forward<E>(executor), std::forward<F>(f));
-//    }
-//
-//    template <typename F>
-//    auto operator^(executor_task_pair<F> etp) const& {
-//        return recover(std::move(etp)._executor, std::move(etp)._f);
-//    }
-
-//    template <typename F>
-//    auto recover(F&& f) && {
-//        return _p->recover_r(unique_usage(_p), std::forward<F>(f));
-//    }
+    template <typename F, typename E>
+    auto operator^(std::pair<F, E> fe) const& {
+        return _p->recover(std::move(fe).second, std::move(fe).first);
+    }
 
     template <typename F>
     auto operator^(F&& f) && {
-        return std::move(*this) ^ std::forward<F>(f);
+        return _p->recover_r(unique_usage(_p), std::forward<F>(f));
     }
 
     template <typename F, typename E>
@@ -828,18 +801,8 @@ public:
         return _p->recover_r(unique_usage(_p), std::move(fe).second, std::move(fe).first);
     }
 
-//    template <typename E, typename F>
-//    auto recover(E&& executor, F&& f) && {
-//        return _p->recover_r(unique_usage(_p), std::forward<E>(executor), std::forward<F>(f));
-//    }
-
-//    template <typename F>
-//    auto operator^(executor_task_pair<F> etp) && {
-//        return std::move(*this).recover(std::move(etp)._executor, std::move(etp)._f);
-//    }
-
     void detach() const {
-        (void)operator|([_hold = _p](auto) {}, [](const auto&) {});
+        (void)operator|( std::make_pair([](auto) {},  [_hold = _p](auto){}) );
     }
 
     void reset() { _p.reset(); }
@@ -849,11 +812,6 @@ public:
     auto get_try() const& { return _p->get_try(); }
 
     auto get_try() && { return _p->get_try_r(unique_usage(_p)); }
-
-    [[deprecated("Use exception() instead")]]
-    stlab::optional<std::exception_ptr> error() const& {
-        return _p->_exception? stlab::optional<std::exception_ptr>{_p->_exception} : stlab::nullopt;
-    }
 
     std::exception_ptr exception() const& { return _p->_exception; }
 };
@@ -870,6 +828,9 @@ class [[nodiscard]] future<void, void> {
     template <typename Signature, typename E, typename F>
     friend auto package(E, F&&) -> std::pair<detail::packaged_task_from_signature_t<Signature>,
                                               future<detail::result_of_t_<Signature>>>;
+    template <typename Sig, typename F>
+    friend auto package(F&&)
+    -> std::pair<detail::packaged_task_from_signature_t<Sig>, future<detail::result_of_t_<Sig>>>;
 
     template <typename Signature, typename E, typename F>
     friend auto package_with_broken_promise(E, F &&)
@@ -894,11 +855,6 @@ public:
 
     bool valid() const { return static_cast<bool>(_p); }
 
-//    template <typename F>
-//    auto then(F&& f) const& {
-//        return _p->then(std::forward<F>(f));
-//    }
-
     template <typename F>
     auto operator|(F&& f) const& {
         return _p->then(std::forward<F>(f));
@@ -909,85 +865,39 @@ public:
         return _p->then(std::move(fe).second, std::move(fe).first);
     }
 
-//    template <typename E, typename F>
-//    auto then(E&& executor, F&& f) const& {
-//        return _p->then(std::forward<E>(executor), std::forward<F>(f));
-//    }
-//
-//    template <typename F>
-//    auto operator|(executor_task_pair<F> etp) const& {
-//        return then(std::move(etp)._executor, std::move(etp)._f);
-//    }
-//
-//    template <typename F>
-//    auto then(F&& f) && {
-//        return _p->then_r(unique_usage(_p), std::forward<F>(f));
-//    }
-
-    template <typename F>
+   template <typename F>
     auto operator|(F&& f) && {
         return _p->then_r(unique_usage(_p), std::forward<F>(f));
     }
 
     template <typename F, typename E>
     auto operator|(std::pair<F, E> fe) && {
-        //return _p->then(std::move(fe).second, std::move(fe).first);
         return _p->then_r(unique_usage(_p), std::move(fe).second, std::move(fe).first);
     }
-
-//    template <typename E, typename F>
-//    auto then(E&& executor, F&& f) && {
-//        return _p->then_r(unique_usage(_p), std::forward<E>(executor), std::forward<F>(f));
-//    }
-
-//    template <typename F>
-//    auto operator|(executor_task_pair<F> etp) && {
-//        return std::move(*this).then(std::move(etp)._executor, std::move(etp)._f);
-//    }
-
-//    template <typename F>
-//    auto recover(F&& f) const& {
-//        return _p->recover(std::forward<F>(f));
-//    }
 
     template <typename F>
     auto operator^(F&& f) const& {
         return _p->recover(std::forward<F>(f));
     }
 
-//    template <typename E, typename F>
-//    auto recover(E&& executor, F&& f) const& {
-//        return _p->recover(std::forward<E>(executor), std::forward<F>(f));
-//    }
-//
-//    template <typename F>
-//    auto operator^(executor_task_pair<F> etp) const& {
-//        return recover(std::move(etp)._executor, std::move(etp)._f);
-//    }
-//
-//    template <typename F>
-//    auto recover(F&& f) && {
-//        return _p->recover_r(unique_usage(_p), std::forward<F>(f));
-//    }
+    template <typename F, typename E>
+    auto operator^(std::pair<F, E> fe) const& {
+        return _p->recover(std::move(fe).second, std::move(fe).first);
+    }
 
-//    template <typename F>
-//    auto operator^(F&& f) && {
-//        return std::move(*this).recover(std::forward<F>(f));
-//    }
+    template <typename F>
+    auto operator^(F&& f) && {
+        return _p->recover_r(unique_usage(_p), std::forward<F>(f));
+    }
 
-//    template <typename E, typename F>
-//    auto recover(E&& executor, F&& f) && {
-//        return _p->recover_r(unique_usage(_p), std::forward<E>(executor), std::forward<F>(f));
-//    }
-//
-//    template <typename F>
-//    auto operator^(executor_task_pair<F> etp) && {
-//        return std::move(*this).recover(std::move(etp)._executor, std::move(etp)._f);
-//    }
+    template <typename E, typename F>
+    auto operator^(std::pair<F, E> fe) && {
+        return _p->recover_r(unique_usage(_p), std::move(fe).second, std::move(fe).first);
+    }
 
-//    void detach() const {
-//        (void)operator|([_hold = _p](auto) {});
-//    }
+    void detach() const {
+        (void)operator|( std::make_pair([]() {},  [_hold = _p](auto){}) );
+    }
 
     void reset() { _p.reset(); }
 
@@ -1017,6 +927,10 @@ class [[nodiscard]] future<T, enable_if_not_copyable<T>> {
     friend auto package(E, F &&) -> std::pair<detail::packaged_task_from_signature_t<Signature>,
                                               future<detail::result_of_t_<Signature>>>;
 
+    template <typename Sig, typename F>
+    friend auto package(F&&)
+    -> std::pair<detail::packaged_task_from_signature_t<Sig>, future<detail::result_of_t_<Sig>>>;
+
     template <typename Signature, typename E, typename F>
     friend auto package_with_broken_promise(E, F &&)
         -> std::pair<detail::packaged_task_from_signature_t<Signature>,
@@ -1043,47 +957,25 @@ public:
 
     bool valid() const { return static_cast<bool>(_p); }
 
-//    template <typename F>
-//    auto then(F&& f) && {
-//        return _p->then_r(unique_usage(_p), std::forward<F>(f));
-//    }
-
     template <typename F>
     auto operator|(F&& f) && {
-        //return std::move(*this).then(std::forward<F>(f));
         return _p->then_r(unique_usage(_p), std::forward<F>(f));
     }
 
-//    template <typename E, typename F>
-//    auto then(E&& executor, F&& f) && {
-//        return _p->then_r(unique_usage(_p), std::forward<E>(executor), std::forward<F>(f));
-//    }
-//
-//    template <typename F>
-//    auto operator|(executor_task_pair<F> etp) && {
-//        return std::move(*this).then(std::move(etp)._executor, std::move(etp)._f);
-//    }
-//
-//    template <typename F>
-//    auto recover(F&& f) && {
-//        return _p->recover_r(unique_usage(_p), std::forward<F>(f));
-//    }
+    template <typename F, typename E>
+    auto operator|(std::pair<F, E> fe) && {
+        return _p->then_r(unique_usage(_p), std::move(fe).second, std::move(fe).first);
+    }
 
     template <typename F>
     auto operator^(F&& f) && {
-        //return std::move(*this).recover(std::forward<F>(f));
         return _p->recover_r(unique_usage(_p), std::forward<F>(f));
     }
 
-//    template <typename E, typename F>
-//    auto recover(E&& executor, F&& f) && {
-//        return _p->recover_r(unique_usage(_p), std::forward<E>(executor), std::forward<F>(f));
-//    }
-//
-//    template <typename F>
-//    auto operator^(executor_task_pair<F> etp) && {
-//        return std::move(*this).recover(std::move(etp)._executor, std::move(etp)._f);
-//    }
+    template <typename F, typename E>
+    auto operator^(std::pair<F, E> fe) && {
+        return _p->recover_r(unique_usage(_p), std::move(fe).second, std::move(fe).first);
+    }
 
     void detach() const {
         (void)_p->then_r(unique_usage(_p), [_hold = _p](auto) {}, [](auto&&) {});
@@ -1096,11 +988,6 @@ public:
     auto get_try() const& { return _p->get_try(); }
 
     auto get_try() && { return _p->get_try_r(unique_usage(_p)); }
-
-    [[deprecated("Use exception() instead")]]
-    stlab::optional<std::exception_ptr> error() const& {
-        return _p->_exception? stlab::optional<std::exception_ptr>{_p->_exception} : stlab::nullopt;
-    }
 
     std::exception_ptr exception() const& { return _p->_exception; }
 };
@@ -1119,7 +1006,7 @@ auto package(E executor, F&& f)
 template <typename Sig, typename F>
 auto package(F&& f)
     -> std::pair<detail::packaged_task_from_signature_t<Sig>, future<detail::result_of_t_<Sig>>> {
-    return package(immediate_executor, std::forward<F>(f));
+    return package<Sig>(immediate_executor, std::forward<F>(f));
 }
 
 template <typename Sig, typename E, typename F>
@@ -1285,7 +1172,7 @@ auto apply_when_any_arg(F& f, P& p) {
 
 template <std::size_t i, typename E, typename P, typename T>
 void attach_when_arg_(E&& executor, std::shared_ptr<P>& p, T a) {
-    p->_holds[i] = std::move(a).recover(std::forward<E>(executor), [_w = std::weak_ptr<P>(p)](auto x) {
+    p->_holds[i] = std::move(a) ^ [_w = std::weak_ptr<P>(p)](auto x) {
         auto p = _w.lock();
         if (!p) return;
 
@@ -1294,7 +1181,7 @@ void attach_when_arg_(E&& executor, std::shared_ptr<P>& p, T a) {
         } else {
             p->template done<i>(std::move(x));
         }
-    });
+    } & std::forward<E>(executor);
 }
 
 template <typename E, typename P, typename... Ts, std::size_t... I>
@@ -1311,21 +1198,26 @@ void attach_when_args(E&& executor, std::shared_ptr<P>& p, Ts... a) {
 
 /**************************************************************************************************/
 
-template <typename E, typename F, typename... Ts>
-auto when_all(E executor, F f, future<Ts>... args) {
+template <typename F, typename E, typename... Ts>
+auto when_all(std::pair<F, E> fe, future<Ts>... args) {
     using vt_t = voidless_tuple<Ts...>;
     using opt_t = optional_placeholder_tuple<Ts...>;
     using result_t = decltype(detail::apply_tuple(std::declval<F>(), std::declval<vt_t>()));
 
     auto shared = std::make_shared<detail::when_all_shared<F, opt_t>>();
-    auto p = package<result_t()>(executor, [_f = std::move(f), _p = shared] {
+    auto p = package<result_t()>(fe.second, [_f = std::move(fe.first), _p = shared] {
         return detail::apply_when_all_args(_f, _p);
     });
     shared->_f = std::move(p.first);
 
-    detail::attach_when_args(executor, shared, std::move(args)...);
+    detail::attach_when_args(fe.second, shared, std::move(args)...);
 
     return std::move(p.second);
+}
+
+template <typename F, typename... Ts>
+auto when_all(F f, future<Ts>... args) {
+    return when_all(std::make_pair(std::move(f), immediate_executor), std::move(args)...);
 }
 
 /**************************************************************************************************/
@@ -1370,10 +1262,15 @@ struct make_when_any<void> {
 
 /**************************************************************************************************/
 
-template <typename E, typename F, typename T, typename... Ts>
-auto when_any(E executor, F&& f, future<T> arg, future<Ts>... args) {
-    return make_when_any<T>::make(std::move(executor), std::forward<F>(f), std::move(arg),
+template <typename F, typename E, typename T, typename... Ts>
+auto when_any(std::pair<F, E> fe, future<T> arg, future<Ts>... args) {
+    return make_when_any<T>::make(std::move(std::move(fe).second), std::move(fe).first, std::move(arg),
                                   std::move(args)...);
+}
+
+template <typename F, typename T, typename... Ts>
+auto when_any(F f, future<T> arg, future<Ts>... args) {
+    return when_any(std::make_pair(std::move(f), immediate_executor), std::move(arg), std::move(args)...);
 }
 
 /**************************************************************************************************/
@@ -1615,10 +1512,10 @@ struct create_range_of_futures<R, T, C, enable_if_not_copyable<T>> {
 /**************************************************************************************************/
 
 template <
-    typename E, // models task executor
     typename F, // models functional object
+    typename E, // models task executor
     typename I> // models ForwardIterator that reference to a range of futures of the same type
-auto when_all(E executor, F f, std::pair<I, I> range) {
+auto when_all(std::pair<F, E> fe, std::pair<I, I> range) {
     using param_t = typename std::iterator_traits<I>::value_type::result_type;
     using result_t = typename detail::result_of_when_all_t<F, param_t>::result_type;
     using context_result_t =
@@ -1628,22 +1525,29 @@ auto when_all(E executor, F f, std::pair<I, I> range) {
 
     if (range.first == range.second) {
         auto p = package<result_t()>(
-            executor, detail::context_result<F, false, context_result_t>(std::move(f), 0));
-        executor(std::move(p.first));
+            fe.second, detail::context_result<F, false, context_result_t>(std::move(fe).first, 0));
+        fe.second(std::move(p.first));
         return std::move(p.second);
     }
 
     return detail::create_range_of_futures<result_t, param_t, context_t>::do_it(
-        executor, std::move(f), range.first, range.second);
+        fe.second, std::move(fe).first, range.first, range.second);
+}
+
+template <
+    typename F, // models functional object
+    typename I> // models ForwardIterator that reference to a range of futures of the same type
+auto when_all(F f, std::pair<I, I> range) {
+    return when_all(std::make_pair(std::move(f), immediate_executor), std::move(range));
 }
 
 /**************************************************************************************************/
 
 template <
-    typename E, // models task executor
     typename F, // models functional object
+    typename E, // models task executor
     typename I> // models ForwardIterator that reference to a range of futures of the same type
-auto when_any(E executor, F&& f, std::pair<I, I> range) {
+auto when_any(std::pair<F, E> fe, std::pair<I, I> range) {
     using param_t = typename std::iterator_traits<I>::value_type::result_type;
     using result_t = typename detail::result_of_when_any_t<F, param_t>::result_type;
     using context_result_t = std::conditional_t<std::is_same<void, param_t>::value, void, param_t>;
@@ -1652,13 +1556,20 @@ auto when_any(E executor, F&& f, std::pair<I, I> range) {
 
     if (range.first == range.second) {
         auto p = package_with_broken_promise<result_t()>(
-            std::move(executor),
-            detail::context_result<F, true, context_result_t>(std::forward<F>(f), 0));
+            std::move(fe).second,
+            detail::context_result<F, true, context_result_t>(std::move(fe).first, 0));
         return std::move(p.second);
     }
 
     return detail::create_range_of_futures<result_t, param_t, context_t>::do_it(
-        std::move(executor), std::forward<F>(f), range.first, range.second);
+        std::move(fe).second, std::move(fe).first, range.first, range.second);
+}
+
+template <
+    typename F, // models functional object
+    typename I> // models ForwardIterator that reference to a range of futures of the same type
+auto when_any(F f, std::pair<I, I> range) {
+    return when_any(std::make_pair(std::move(f), immediate_executor), std::move(range));
 }
 
 /**************************************************************************************************/
@@ -1683,6 +1594,7 @@ auto async(E executor, F &&f, Args &&... args)
     return std::move(p.second);
 }
 }
+
 template <typename F, typename E, typename... Args>
 auto async(std::pair<F, E> fe, Args&&... args)
 -> std::enable_if_t<stlab::is_executor<std::decay_t<E>>, future<std::result_of_t<std::decay_t<F>(std::decay_t<Args>...)>>> {
@@ -1788,16 +1700,15 @@ struct value_<T, enable_if_not_copyable<T>> {
     static void set(shared_base<future<R>>& sb, F& f, Args&&... args) {
         sb._result = f(std::forward<Args>(args)...);
         sb._reduction_helper.value =
-            std::move(*sb._result)
-                .recover([_p = sb.shared_from_this()](future<R> f) {
+            (std::move(*sb._result) ^
+                [_p = sb.shared_from_this()](future<R> f) {
                     if (auto ex = std::move(f).exception(); ex) {
                         _p->_exception = ex;
                         proceed(*_p);
                         throw future_error(future_error_codes::reduction_failed);
                     }
                     return *f.get_try();
-                })
-                .then([_p = sb.shared_from_this()](auto) { proceed(*_p); });
+                }) | [_p = sb.shared_from_this()](auto) { proceed(*_p); };
     }
 };
 
@@ -1975,12 +1886,11 @@ auto operator co_await(stlab::future<R> f) {
         auto await_resume() { return std::move(_result); }
 
         void await_suspend(std::experimental::coroutine_handle<> ch) {
-            std::move(_input)
-                .then(stlab::default_executor,
+            std::move(_input) | ((
                       [this, ch](auto&& result) {
                           this->_result = std::forward<decltype(result)>(result);
                           ch.resume();
-                      })
+                      }) & stlab::default_executor)
                 .detach();
         }
     };
@@ -1996,9 +1906,7 @@ inline auto operator co_await(stlab::future<void> f) {
         inline auto await_resume() {}
 
         inline void await_suspend(std::experimental::coroutine_handle<> ch) {
-            std::move(_input)
-                .then(stlab::default_executor, [ch]() { ch.resume(); })
-                .detach();
+            std::move(_input) | ([ch]() { ch.resume(); } & stlab::default_executor)).detach();
         }
     };
     return Awaiter{std::move(f)};

@@ -10,6 +10,7 @@
 #define STLAB_CONCURRENCY_DEFAULT_EXECUTOR_HPP
 
 #include <stlab/concurrency/config.hpp>
+#include <stlab/concurrency/executor_base.hpp>
 #include <stlab/concurrency/task.hpp>
 
 #include <cassert>
@@ -410,8 +411,12 @@ constexpr auto low_executor = detail::executor_type<detail::executor_priority::l
 constexpr auto default_executor = detail::executor_type<detail::executor_priority::medium>{};
 constexpr auto high_executor = detail::executor_type<detail::executor_priority::high>{};
 
-auto stlab_is_executor [[maybe_unused]] (decltype(default_executor)) -> std::true_type;
-
+namespace detail
+{
+auto stlab_is_executor [[maybe_unused]](decltype(low_executor)) -> std::true_type;
+auto stlab_is_executor [[maybe_unused]](decltype(default_executor)) -> std::true_type;
+auto stlab_is_executor [[maybe_unused]](decltype(high_executor)) -> std::true_type;
+}
 /**************************************************************************************************/
 
 } // namespace v1

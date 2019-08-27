@@ -98,7 +98,7 @@ T blocking_get(future<T> x) {
     bool flag{false};
     std::condition_variable condition;
     std::mutex m;
-    auto hold = std::move(x).recover(immediate_executor, [&](auto&& r) {
+    auto hold = std::move(x) ^ [&](auto&& r) {
         if (r.exception())
             error = std::forward<decltype(r)>(r).exception();
         else
@@ -109,7 +109,7 @@ T blocking_get(future<T> x) {
             flag = true;
             condition.notify_one();
         }
-    });
+    } & immediate_executor;
     {
         std::unique_lock<std::mutex> lock{m};
         while (!flag) {
@@ -127,7 +127,7 @@ stlab::optional<T> blocking_get(future<T> x, const std::chrono::nanoseconds& tim
     std::exception_ptr error = nullptr;
     auto state = std::make_shared<detail::shared_state_result<T>>();
     auto hold =
-        std::move(x).recover(immediate_executor, [_weak_state = make_weak_ptr(state)](auto&& r) {
+        std::move(x) ^ ([_weak_state = make_weak_ptr(state)](auto&& r) {
             auto state = _weak_state.lock();
             if (!state) {
                 return;
@@ -141,7 +141,7 @@ stlab::optional<T> blocking_get(future<T> x, const std::chrono::nanoseconds& tim
                 state->flag = true;
                 state->condition.notify_one();
             }
-        });
+    } & immediate_executor);
 
     {
         std::unique_lock<std::mutex> lock{state->m};

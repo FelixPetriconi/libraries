@@ -40,26 +40,13 @@ constexpr bool is_executor = decltype(stlab_is_executor(std::declval<T>()))::val
 
 /**************************************************************************************************/
 
-}
-
-}
-
 template <class T, class U>
-auto operator&(T&& a, U&& b) -> std::enable_if_t<stlab::is_executor<std::decay_t<U>>,
+auto operator&(T&& a, U&& b) -> std::enable_if_t<is_executor<std::decay_t<U>>,
     std::pair<std::decay_t<T>, std::decay_t<U>>> {
     return {std::forward<T>(a), std::forward<U>(b)};
 }
 
 /**************************************************************************************************/
-
-namespace stlab
-{
-
-/**************************************************************************************************/
-
-inline namespace v1
-{
-
 
 /*
  * returns an executor that will schedule any passed task to it to execute

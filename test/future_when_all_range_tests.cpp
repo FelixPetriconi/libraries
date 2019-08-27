@@ -24,7 +24,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_void_empty_range) {
     bool check = {false};
     std::vector<stlab::future<void>> emptyFutures;
 
-    sut = when_all(make_executor<0>(), [& _check = check]() { _check = true; },
+    sut = when_all([& _check = check]() { _check = true; } & make_executor<0>(),
                    std::make_pair(emptyFutures.begin(), emptyFutures.end()));
 
     check_valid_future(sut);
@@ -39,7 +39,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_empty_range) {
     size_t p = 0;
     std::vector<stlab::future<int>> emptyFutures;
 
-    sut = when_all(make_executor<0>(), [& _p = p](std::vector<int> v) { _p = v.size(); },
+    sut = when_all([& _p = p](std::vector<int> v) { _p = v.size(); } & make_executor<0>(),
                    std::make_pair(emptyFutures.begin(), emptyFutures.end()));
 
     check_valid_future(sut);
@@ -54,13 +54,12 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_one_element) {
     size_t p = 0;
     size_t r = 0;
     std::vector<stlab::future<int>> futures;
-    futures.push_back(async(make_executor<0>(), [] { return 42; }));
+    futures.push_back(async([] { return 42; } & make_executor<0>()));
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p, &_r = r](std::vector<int> v) {
+    sut = when_all([& _p = p, &_r = r](std::vector<int> v) {
                        _p = v.size();
                        _r = v[0];
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     check_valid_future(sut);
@@ -77,18 +76,17 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_many_elements) {
     size_t p = 0;
     size_t r = 0;
     std::vector<stlab::future<int>> futures;
-    futures.push_back(async(make_executor<0>(), [] { return 1; }));
-    futures.push_back(async(make_executor<0>(), [] { return 2; }));
-    futures.push_back(async(make_executor<0>(), [] { return 3; }));
-    futures.push_back(async(make_executor<0>(), [] { return 5; }));
+    futures.push_back(async([] { return 1; } & make_executor<0>()));
+    futures.push_back(async([] { return 2; } & make_executor<0>()));
+    futures.push_back(async([] { return 3; } & make_executor<0>()));
+    futures.push_back(async([] { return 5; } & make_executor<0>()));
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p, &_r = r](std::vector<int> v) {
+    sut = when_all([& _p = p, &_r = r](std::vector<int> v) {
                        _p = v.size();
                        for (auto i : v) {
                            _r += i;
                        }
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     check_valid_future(sut);
@@ -111,19 +109,18 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_diamond_formation_elements)
     BOOST_TEST_MESSAGE("running future when_all void with range with diamond formation");
     int v[4] = {0, 0, 0, 0};
     int r = 0;
-    auto start = async(make_executor<0>(), [] { return 4711; });
+    auto start = async([] { return 4711; } & make_executor<0>());
     std::vector<stlab::future<void>> futures(4);
-    futures[0] = start.then(make_executor<0>(), [& _p = v[0]](auto x) { _p = x + 1; });
-    futures[1] = start.then(make_executor<0>(), [& _p = v[1]](auto x) { _p = x + 2; });
-    futures[2] = start.then(make_executor<0>(), [& _p = v[2]](auto x) { _p = x + 3; });
-    futures[3] = start.then(make_executor<0>(), [& _p = v[3]](auto x) { _p = x + 5; });
+    futures[0] = start.then([&_p = v[0]](auto x) { _p = x + 1; } & make_executor<0>());
+    futures[1] = start.then([&_p = v[1]](auto x) { _p = x + 2; } & make_executor<0>());
+    futures[2] = start.then([&_p = v[2]](auto x) { _p = x + 3; } & make_executor<0>());
+    futures[3] = start.then([&_p = v[3]](auto x) { _p = x + 5; } & make_executor<0>());
 
-    sut = when_all(make_executor<1>(),
-                   [& _r = r, &v]() {
+    sut = when_all([& _r = r, &v]() {
                        for (auto i : v) {
                            _r += i;
                        }
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     check_valid_future(sut);
@@ -142,8 +139,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_int_empty_range) {
 
     std::vector<stlab::future<int>> emptyFutures;
 
-    sut = when_all(make_executor<0>(),
-                   [](std::vector<int> v) { return static_cast<int>(v.size()); },
+    sut = when_all([](std::vector<int> v) { return static_cast<int>(v.size()); } & make_executor<0>(),
                    std::make_pair(emptyFutures.begin(), emptyFutures.end()));
     check_valid_future(sut);
     wait_until_future_completed(sut);
@@ -178,20 +174,19 @@ BOOST_AUTO_TEST_CASE(future_when_all_int_range_with_many_elements) {
     BOOST_TEST_MESSAGE("running future when_all int with range with many elements");
     size_t p = 0;
     std::vector<stlab::future<int>> futures;
-    futures.push_back(async(make_executor<0>(), [] { return 1; }));
-    futures.push_back(async(make_executor<0>(), [] { return 2; }));
-    futures.push_back(async(make_executor<0>(), [] { return 3; }));
-    futures.push_back(async(make_executor<0>(), [] { return 5; }));
+    futures.push_back(async([] { return 1; } & make_executor<0>()));
+    futures.push_back(async([] { return 2; } & make_executor<0>()));
+    futures.push_back(async([] { return 3; } & make_executor<0>()));
+    futures.push_back(async([] { return 5; } & make_executor<0>()));
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p](std::vector<int> v) {
+    sut = when_all([& _p = p](std::vector<int> v) {
                        _p = v.size();
                        auto r = 0;
                        for (auto i : v) {
                            r += i;
                        }
                        return r;
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     check_valid_future(sut);
@@ -215,20 +210,19 @@ BOOST_AUTO_TEST_CASE(future_when_all_int_range_with_diamond_formation_elements) 
     size_t p = 0;
     auto start = async(make_executor<0>(), [] { return 4711; });
     std::vector<stlab::future<int>> futures(4);
-    futures[0] = start.then(make_executor<0>(), [](auto x) { return x + 1; });
-    futures[1] = start.then(make_executor<0>(), [](auto x) { return x + 2; });
-    futures[2] = start.then(make_executor<0>(), [](auto x) { return x + 3; });
-    futures[3] = start.then(make_executor<0>(), [](auto x) { return x + 5; });
+    futures[0] = start.then([](auto x) { return x + 1; } & make_executor<0>());
+    futures[1] = start.then([](auto x) { return x + 2; } & make_executor<0>());
+    futures[2] = start.then([](auto x) { return x + 3; } & make_executor<0>());
+    futures[3] = start.then([](auto x) { return x + 5; } & make_executor<0>());
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p](std::vector<int> v) {
+    sut = when_all([& _p = p](std::vector<int> v) {
                        _p = v.size();
                        auto r = 0;
                        for (auto i : v) {
                            r += i;
                        }
                        return r;
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     check_valid_future(sut);
@@ -250,20 +244,19 @@ BOOST_AUTO_TEST_CASE(future_when_all_move_range_with_many_elements) {
     BOOST_TEST_MESSAGE("running future when_all move_only with range with many elements");
     size_t p = 0;
     std::vector<stlab::future<stlab::move_only>> futures;
-    futures.push_back(async(make_executor<0>(), [] { return stlab::move_only{1}; }));
-    futures.push_back(async(make_executor<0>(), [] { return stlab::move_only{2}; }));
-    futures.push_back(async(make_executor<0>(), [] { return stlab::move_only{3}; }));
-    futures.push_back(async(make_executor<0>(), [] { return stlab::move_only{5}; }));
+    futures.push_back(async([] { return stlab::move_only{1}; } & make_executor<0>()));
+    futures.push_back(async([] { return stlab::move_only{2}; } & make_executor<0>()));
+    futures.push_back(async([] { return stlab::move_only{3}; } & make_executor<0>()));
+    futures.push_back(async([] { return stlab::move_only{5}; } & make_executor<0>()));
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p](std::vector<stlab::move_only> v) {
+    sut = when_all([& _p = p](std::vector<stlab::move_only> v) {
                        _p = v.size();
                        auto r = 0;
                        for (const auto& i : v) {
                            r += i.member();
                        }
                        return stlab::move_only{r};
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     check_valid_future(sut);
@@ -287,13 +280,12 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_one_element) {
     size_t r = 0;
     std::vector<stlab::future<int>> futures;
     futures.push_back(
-        async(make_executor<0>(), []() -> int { throw test_exception("failure"); }));
+        async([]() -> int { throw test_exception("failure"); } & make_executor<0>()));
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p, &_r = r](const std::vector<int>& v) {
+    sut = when_all([& _p = p, &_r = r](const std::vector<int>& v) {
                        _p = v.size();
                        _r = v[0];
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     wait_until_future_fails<test_exception>(sut);
@@ -312,18 +304,17 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_many_elements_one_failing) 
     size_t r = 0;
     std::vector<stlab::future<int>> futures;
     futures.push_back(
-        async(make_executor<0>(), []() -> int { throw test_exception("failure"); }));
-    futures.push_back(async(make_executor<0>(), [] { return 2; }));
-    futures.push_back(async(make_executor<0>(), [] { return 3; }));
-    futures.push_back(async(make_executor<0>(), [] { return 5; }));
+        async([]() -> int { throw test_exception("failure"); } & make_executor<0>()));
+    futures.push_back(async([] { return 2; } & make_executor<0>()));
+    futures.push_back(async([] { return 3; } & make_executor<0>()));
+    futures.push_back(async([] { return 5; } & make_executor<0>()));
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p, &_r = r](const std::vector<int>& v) {
+    sut = when_all([& _p = p, &_r = r](const std::vector<int>& v) {
                        _p = v.size();
                        for (auto i : v) {
                            _r += i;
                        }
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     wait_until_future_fails<test_exception>(sut);
@@ -342,21 +333,20 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_many_elements_all_failing) 
     size_t r = 0;
     std::vector<stlab::future<int>> futures;
     futures.push_back(
-        async(make_executor<0>(), []() -> int { throw test_exception("failure"); }));
+        async([]() -> int { throw test_exception("failure"); } & make_executor<0>()));
     futures.push_back(
-        async(make_executor<0>(), []() -> int { throw test_exception("failure"); }));
+        async([]() -> int { throw test_exception("failure"); } & make_executor<0>()));
     futures.push_back(
-        async(make_executor<0>(), []() -> int { throw test_exception("failure"); }));
+        async([]() -> int { throw test_exception("failure"); } & make_executor<0>()));
     futures.push_back(
-        async(make_executor<0>(), []() -> int { throw test_exception("failure"); }));
+        async([]() -> int { throw test_exception("failure"); } & make_executor<0>()));
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p, &_r = r](const std::vector<int>& v) {
+    sut = when_all([& _p = p, &_r = r](const std::vector<int>& v) {
                        _p = v.size();
                        for (auto i : v) {
                            _r += i;
                        }
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     wait_until_future_fails<test_exception>(sut);
@@ -380,19 +370,18 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_diamond_formation_elements_
         "running future when_all void with range with diamond formation and start failing");
     int v[4] = {0, 0, 0, 0};
     int r = 0;
-    auto start = async(make_executor<0>(), []() -> int { throw test_exception("failure"); });
+    auto start = async([]() -> int { throw test_exception("failure"); } & make_executor<0>());
     std::vector<stlab::future<void>> futures(4);
-    futures[0] = start.then(make_executor<0>(), [& _p = v[0]](auto x) { _p = x + 1; });
-    futures[1] = start.then(make_executor<0>(), [& _p = v[1]](auto x) { _p = x + 2; });
-    futures[2] = start.then(make_executor<0>(), [& _p = v[2]](auto x) { _p = x + 3; });
-    futures[3] = start.then(make_executor<0>(), [& _p = v[3]](auto x) { _p = x + 5; });
+    futures[0] = start.then([& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>());
+    futures[1] = start.then([& _p = v[1]](auto x) { _p = x + 2; } & make_executor<0>());
+    futures[2] = start.then([& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>());
+    futures[3] = start.then([& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>());
 
-    sut = when_all(make_executor<1>(),
-                   [& _r = r, &v]() {
+    sut = when_all([& _r = r, &v]() {
                        for (auto i : v) {
                            _r += i;
                        }
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     wait_until_future_fails<test_exception>(sut);
@@ -412,19 +401,18 @@ BOOST_AUTO_TEST_CASE(
         "running future when_all void with range with diamond formation and one of the parallel tasks is failing");
     int v[4] = {0, 0, 0, 0};
     int r = 0;
-    auto start = async(make_executor<0>(), []() -> int { return 42; });
+    auto start = async([]() -> int { return 42; } & make_executor<0>());
     std::vector<stlab::future<void>> futures(4);
-    futures[0] = start.then(make_executor<0>(), [& _p = v[0]](auto x) { _p = x + 1; });
-    futures[1] = start.then(make_executor<0>(), [](auto) { throw test_exception("failure"); });
-    futures[2] = start.then(make_executor<0>(), [& _p = v[2]](auto x) { _p = x + 3; });
-    futures[3] = start.then(make_executor<0>(), [& _p = v[3]](auto x) { _p = x + 5; });
+    futures[0] = start.then([& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>());
+    futures[1] = start.then([](auto) { throw test_exception("failure"); } & make_executor<0>());
+    futures[2] = start.then([& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>());
+    futures[3] = start.then([& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>());
 
-    sut = when_all(make_executor<1>(),
-                   [& _r = r, &v]() {
+    sut = when_all([& _r = r, &v]() {
                        for (auto i : v) {
                            _r += i;
                        }
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     wait_until_future_fails<test_exception>(sut);
@@ -440,14 +428,14 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_diamond_formation_elements_
         "running future when_all void with range with diamond formation and the joining tasks is failing");
     int v[4] = {0, 0, 0, 0};
     int r = 0;
-    auto start = async(make_executor<0>(), []() -> int { return 42; });
+    auto start = async([]() -> int { return 42; } & make_executor<0>());
     std::vector<stlab::future<void>> futures(4);
-    futures[0] = start.then(make_executor<0>(), [& _p = v[0]](auto x) { _p = x + 1; });
-    futures[1] = start.then(make_executor<0>(), [& _p = v[1]](auto x) { _p = x + 2; });
-    futures[2] = start.then(make_executor<0>(), [& _p = v[2]](auto x) { _p = x + 3; });
-    futures[3] = start.then(make_executor<0>(), [& _p = v[3]](auto x) { _p = x + 5; });
+    futures[0] = start.then([& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>());
+    futures[1] = start.then([& _p = v[1]](auto x) { _p = x + 2; } & make_executor<0>());
+    futures[2] = start.then([& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>());
+    futures[3] = start.then([& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>());
 
-    sut = when_all(make_executor<1>(), []() { throw test_exception("failure"); },
+    sut = when_all(m[]() { throw test_exception("failure"); } & ake_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     wait_until_future_fails<test_exception>(sut);

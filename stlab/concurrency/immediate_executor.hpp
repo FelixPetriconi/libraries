@@ -11,6 +11,8 @@
 
 #include <chrono>
 
+#include <stlab/concurrency/executor_base.hpp>
+
 /**************************************************************************************************/
 
 namespace stlab {
@@ -44,7 +46,11 @@ struct immediate_executor_type {
 
 constexpr auto immediate_executor = detail::immediate_executor_type{};
 
+namespace detail
+{
 auto stlab_is_executor [[maybe_unused]] (decltype(immediate_executor)) -> std::true_type;
+}
+
 
 /**************************************************************************************************/
 
