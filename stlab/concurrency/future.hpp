@@ -1449,7 +1449,7 @@ struct common_context : CR {
 template <typename C, typename E, typename T>
 void attach_tasks(size_t index, E executor, const std::shared_ptr<C>& context, T&& a) {
     context->_holds[index] =
-        std::move(a).recover(std::move(executor), [_context = std::weak_ptr<C>(context), _i = index](auto x) {
+        std::move(a) ^ [_context = std::weak_ptr<C>(context), _i = index](auto x) {
             auto p = _context.lock();
             if (!p) return;
             if (auto ex = x.exception(); ex) {
@@ -1457,7 +1457,7 @@ void attach_tasks(size_t index, E executor, const std::shared_ptr<C>& context, T
             } else {
                 p->done(std::move(x), _i);
             }
-        });
+        } & std::move(executor);
 }
 
 template <typename R, typename T, typename C, typename Enabled = void>

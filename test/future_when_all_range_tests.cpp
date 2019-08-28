@@ -111,10 +111,10 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_diamond_formation_elements)
     int r = 0;
     auto start = async([] { return 4711; } & make_executor<0>());
     std::vector<stlab::future<void>> futures(4);
-    futures[0] = start.then([&_p = v[0]](auto x) { _p = x + 1; } & make_executor<0>());
-    futures[1] = start.then([&_p = v[1]](auto x) { _p = x + 2; } & make_executor<0>());
-    futures[2] = start.then([&_p = v[2]](auto x) { _p = x + 3; } & make_executor<0>());
-    futures[3] = start.then([&_p = v[3]](auto x) { _p = x + 5; } & make_executor<0>());
+    futures[0] = start | [&_p = v[0]](auto x) { _p = x + 1; } & make_executor<0>();
+    futures[1] = start | [&_p = v[1]](auto x) { _p = x + 2; } & make_executor<0>();
+    futures[2] = start | [&_p = v[2]](auto x) { _p = x + 3; } & make_executor<0>();
+    futures[3] = start | [&_p = v[3]](auto x) { _p = x + 5; } & make_executor<0>();
 
     sut = when_all([& _r = r, &v]() {
                        for (auto i : v) {
@@ -152,13 +152,12 @@ BOOST_AUTO_TEST_CASE(future_when_all_int_range_with_one_element) {
     BOOST_TEST_MESSAGE("running future when_all int with range of one element");
     size_t p = 0;
     std::vector<stlab::future<int>> futures;
-    futures.push_back(async(make_executor<0>(), [] { return 42; }));
+    futures.push_back(async([] { return 42; } & make_executor<0>()));
 
-    sut = when_all(make_executor<1>(),
-                   [& _p = p](std::vector<int> v) {
+    sut = when_all([&_p = p](std::vector<int> v) {
                        _p = v.size();
                        return v[0];
-                   },
+                   } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     check_valid_future(sut);
@@ -208,12 +207,12 @@ start           sut
 BOOST_AUTO_TEST_CASE(future_when_all_int_range_with_diamond_formation_elements) {
     BOOST_TEST_MESSAGE("running future when_all int with range with diamond formation");
     size_t p = 0;
-    auto start = async(make_executor<0>(), [] { return 4711; });
+    auto start = async([] { return 4711; } & make_executor<0>());
     std::vector<stlab::future<int>> futures(4);
-    futures[0] = start.then([](auto x) { return x + 1; } & make_executor<0>());
-    futures[1] = start.then([](auto x) { return x + 2; } & make_executor<0>());
-    futures[2] = start.then([](auto x) { return x + 3; } & make_executor<0>());
-    futures[3] = start.then([](auto x) { return x + 5; } & make_executor<0>());
+    futures[0] = start | [](auto x) { return x + 1; } & make_executor<0>();
+    futures[1] = start | [](auto x) { return x + 2; } & make_executor<0>();
+    futures[2] = start | [](auto x) { return x + 3; } & make_executor<0>();
+    futures[3] = start | [](auto x) { return x + 5; } & make_executor<0>();
 
     sut = when_all([& _p = p](std::vector<int> v) {
                        _p = v.size();
@@ -372,10 +371,10 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_diamond_formation_elements_
     int r = 0;
     auto start = async([]() -> int { throw test_exception("failure"); } & make_executor<0>());
     std::vector<stlab::future<void>> futures(4);
-    futures[0] = start.then([& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>());
-    futures[1] = start.then([& _p = v[1]](auto x) { _p = x + 2; } & make_executor<0>());
-    futures[2] = start.then([& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>());
-    futures[3] = start.then([& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>());
+    futures[0] = start | [& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>();
+    futures[1] = start | [& _p = v[1]](auto x) { _p = x + 2; } & make_executor<0>();
+    futures[2] = start | [& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>();
+    futures[3] = start | [& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>();
 
     sut = when_all([& _r = r, &v]() {
                        for (auto i : v) {
@@ -403,10 +402,10 @@ BOOST_AUTO_TEST_CASE(
     int r = 0;
     auto start = async([]() -> int { return 42; } & make_executor<0>());
     std::vector<stlab::future<void>> futures(4);
-    futures[0] = start.then([& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>());
-    futures[1] = start.then([](auto) { throw test_exception("failure"); } & make_executor<0>());
-    futures[2] = start.then([& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>());
-    futures[3] = start.then([& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>());
+    futures[0] = start | [& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>();
+    futures[1] = start | [](auto) { throw test_exception("failure"); } & make_executor<0>();
+    futures[2] = start | [& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>();
+    futures[3] = start | [& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>();
 
     sut = when_all([& _r = r, &v]() {
                        for (auto i : v) {
@@ -430,12 +429,12 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_diamond_formation_elements_
     int r = 0;
     auto start = async([]() -> int { return 42; } & make_executor<0>());
     std::vector<stlab::future<void>> futures(4);
-    futures[0] = start.then([& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>());
-    futures[1] = start.then([& _p = v[1]](auto x) { _p = x + 2; } & make_executor<0>());
-    futures[2] = start.then([& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>());
-    futures[3] = start.then([& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>());
+    futures[0] = start | [& _p = v[0]](auto x) { _p = x + 1; } & make_executor<0>();
+    futures[1] = start | [& _p = v[1]](auto x) { _p = x + 2; } & make_executor<0>();
+    futures[2] = start | [& _p = v[2]](auto x) { _p = x + 3; } & make_executor<0>();
+    futures[3] = start | [& _p = v[3]](auto x) { _p = x + 5; } & make_executor<0>();
 
-    sut = when_all(m[]() { throw test_exception("failure"); } & ake_executor<1>(),
+    sut = when_all([]() { throw test_exception("failure"); } & make_executor<1>(),
                    std::make_pair(futures.begin(), futures.end()));
 
     wait_until_future_fails<test_exception>(sut);

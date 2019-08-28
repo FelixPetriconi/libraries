@@ -166,7 +166,7 @@ BOOST_AUTO_TEST_CASE(
 
         sut = interim ^ [](auto failedFuture) {
             check_failure<test_exception>(failedFuture, "failure");
-        };
+        } & make_executor<1>();
 
         wait_until_future_completed(sut);
 
