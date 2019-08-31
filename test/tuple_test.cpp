@@ -113,8 +113,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_int_int) {
     };
 
     auto f = when_all(
-        stlab::default_executor,
-        [](auto... args) { for_each_argument([](auto x) { cout << x << "\n"; }, args...); }, fi(),
+        [](auto... args) { for_each_argument([](auto x) { cout << x << "\n"; }, args...); } & stlab::default_executor, fi(),
         fi());
 
     while (!f.get_try())
@@ -126,7 +125,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_int_int) {
 BOOST_AUTO_TEST_CASE(future_when_all_void) {
     auto fv = [] { return stlab::make_ready_future(stlab::default_executor); };
 
-    auto f = when_all(stlab::default_executor, []() { cout << "done!\n"; }, fv());
+    auto f = when_all([]() { cout << "done!\n"; } & stlab::default_executor, fv());
 
     while (!f.get_try())
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -142,8 +141,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_int) {
     };
 
     auto f = when_all(
-        stlab::default_executor,
-        [](auto... args) { for_each_argument([](auto x) { cout << x << "\n"; }, args...); }, fv(),
+        [](auto... args) { for_each_argument([](auto x) { cout << x << "\n"; }, args...); } & stlab::default_executor, fv(),
         fi());
 
     while (!f.get_try())
@@ -160,8 +158,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_int_void) {
     };
 
     auto f = when_all(
-        stlab::default_executor,
-        [](auto... args) { for_each_argument([](auto x) { cout << x << "\n"; }, args...); }, fi(),
+        [](auto... args) { for_each_argument([](auto x) { cout << x << "\n"; }, args...); } & stlab::default_executor, fi(),
         fv());
 
     while (!f.get_try())
@@ -179,8 +176,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_int_void_string_void_bool_void) {
     auto fb = [] { return stlab::make_ready_future<bool>(true, stlab::default_executor); };
 
     auto f = when_all(
-        stlab::default_executor,
-        [](auto... args) { for_each_argument([](auto x) { cout << x << "\n"; }, args...); }, fi(),
+        [](auto... args) { for_each_argument([](auto x) { cout << x << "\n"; }, args...); } & stlab::default_executor, fi(),
         fv(), fs(), fv(), fb(), fv());
 
     while (!f.get_try())
@@ -193,7 +189,7 @@ BOOST_AUTO_TEST_CASE(future_when_any_void) {
     auto fv = [] { return stlab::make_ready_future(stlab::default_executor); };
 
     auto f =
-        when_any(stlab::default_executor, [](size_t index) { std::cout << "f: " << index << '\n'; },
+        when_any([](size_t index) { std::cout << "f: " << index << '\n'; } & stlab::default_executor,
                  fv(), fv(), fv(), fv(), fv(), fv());
 
     while (!f.get_try())
