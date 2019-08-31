@@ -39,8 +39,8 @@ void test0(stlab::schedule_mode mode) {
 
     dq([&]() { strout("           d1           ( 3)"); });
 
-    b([&]() { strout("   b2                   ( 4)"); })
-        .then(stlab::immediate_executor, [&]() { strout("   b2.1                 ( 4.1)"); })
+    (b([&]() { strout("   b2                   ( 4)"); })
+        | [&]() { strout("   b2.1                 ( 4.1)"); } & stlab::immediate_executor)
         .detach();
 
     cq([&]() { strout("        c1              ( 5)"); });

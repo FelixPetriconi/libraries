@@ -1281,15 +1281,15 @@ struct annotated_process {
     F _f;
     annotations _annotations;
 
-    explicit annotated_process(executor_task_pair<F>&& etp) : _f(std::move(etp._f)), _annotations(std::move(etp._executor)) {}
+    explicit annotated_process(std::pair<F, executor_t> fe) : _f(std::move(fe.first)), _annotations(std::move(fe.second)) {}
 
     annotated_process(F f, const executor& e) : _f(std::move(f)), _annotations(e._executor) {}
     annotated_process(F f, buffer_size bs) : _f(std::move(f)), _annotations(bs._value) {}
 
     annotated_process(F f, executor&& e) : _f(std::move(f)), _annotations(std::move(e._executor)) {}
     annotated_process(F f, annotations&& a) : _f(std::move(f)), _annotations(std::move(a)) {}
-    annotated_process(executor_task_pair<F>&& etp, buffer_size bs) : _f(std::move(etp._f)), _annotations(std::move(etp._executor), bs) {}
-    
+    annotated_process(std::pair<F, executor_t> fe, buffer_size bs) : _f(std::move(fe.first)), _annotations(std::move(fe.second), bs) {}
+
 };
 
 template <typename B, typename E>
@@ -1328,13 +1328,13 @@ detail::annotated_process<F> operator&(F&& f, buffer_size bs) {
 }
 
 template <typename F>
-detail::annotated_process<F> operator&(executor_task_pair<F>&& etp, buffer_size bs) {
-    return detail::annotated_process<F>{std::move(etp), bs};
+detail::annotated_process<F> operator&(std::pair<F, executor_t> fe, buffer_size bs) {
+    return detail::annotated_process<F>{std::move(fe), bs};
 }
 
 template <typename F>
-detail::annotated_process<F> operator&(buffer_size bs, executor_task_pair<F>&& etp) {
-    return detail::annotated_process<F>{std::move(etp), bs};
+detail::annotated_process<F> operator&(buffer_size bs, std::pair<F, executor_t> fe) {
+    return detail::annotated_process<F>{std::move(fe), bs};
 }
 
 template <typename F>
@@ -1450,9 +1450,9 @@ public:
         return receiver<detail::yield_type<unwrap_reference_t<F>, T>>(std::move(p));
     }
 
-    template <typename F>
-    auto operator|(executor_task_pair<F> etp) {
-        return operator|(detail::annotated_process<F>(std::move(etp)));
+    template <typename F, typename E>
+    auto operator|(std::pair<F, E> fe) {
+        return operator|(detail::annotated_process<F>(std::move(fe)));
     }
 
     auto operator|(sender<T> send) {

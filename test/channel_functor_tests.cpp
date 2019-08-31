@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(int_channel_split_int_functor_async) {
     std::vector<stlab::future<void>> inputs;
     for (auto i = 0; i < 10; ++i) {
         inputs.emplace_back(
-            stlab::async(stlab::default_executor, [& _send = _send, i]() { _send[0](i); }));
+            stlab::async([& _send = _send, i]() { _send[0](i); } & stlab::default_executor));
     }
 
     std::atomic_int result1{0};
