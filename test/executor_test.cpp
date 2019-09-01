@@ -17,10 +17,9 @@
 using namespace stlab;
 using namespace std;
 
-namespace
-{
+namespace {
 inline void rest() { std::this_thread::sleep_for(std::chrono::milliseconds(1)); }
-}
+} // namespace
 
 BOOST_AUTO_TEST_CASE(all_low_prio_tasks_are_executed) {
     BOOST_TEST_MESSAGE("All low priority tasks are executed");
@@ -104,7 +103,7 @@ BOOST_AUTO_TEST_CASE(task_system_restarts_after_it_went_pending) {
     mutex m;
     condition_variable cv;
 
-    default_executor([&]{
+    default_executor([&] {
         rest();
         {
             unique_lock block{m};
@@ -112,7 +111,6 @@ BOOST_AUTO_TEST_CASE(task_system_restarts_after_it_went_pending) {
         }
         cv.notify_one();
     });
-
 
     {
         unique_lock block{m};
@@ -154,7 +152,8 @@ BOOST_AUTO_TEST_CASE(all_tasks_will_be_executed_according_to_their_prio) {
         for (auto i = 0; i < iterations; ++i) {
             low_executor([&] {
                 ++taskRunning;
-                correctLow += static_cast<int>(highCount <= taskRunning && defaultCount <= taskRunning);
+                correctLow +=
+                    static_cast<int>(highCount <= taskRunning && defaultCount <= taskRunning);
                 ++done;
                 --taskRunning;
             });
@@ -180,8 +179,10 @@ BOOST_AUTO_TEST_CASE(all_tasks_will_be_executed_according_to_their_prio) {
         rest();
     }
 
-    cout << "Correct default ordering: " << static_cast<double>(correctDefault.load())/iterations <<"%\n";
-    cout << "Correct low ordering:     " << static_cast<double>(correctLow.load())/iterations << "%\n";
+    cout << "Correct default ordering: " << static_cast<double>(correctDefault.load()) / iterations
+         << "%\n";
+    cout << "Correct low ordering:     " << static_cast<double>(correctLow.load()) / iterations
+         << "%\n";
 }
 
 BOOST_AUTO_TEST_CASE(MeasureTiming) {
@@ -195,15 +196,15 @@ BOOST_AUTO_TEST_CASE(MeasureTiming) {
     auto start = chrono::high_resolution_clock::now();
 
     for (auto i = 0; i < iterations; ++i) {
-        low_executor([_i = i, &results,&counter] {
+        low_executor([_i = i, &results, &counter] {
             results[_i] = 1;
             ++counter;
         });
-        default_executor([_i = i + iterations, &results,&counter] {
+        default_executor([_i = i + iterations, &results, &counter] {
             results[_i] = 2;
             ++counter;
         });
-        high_executor([_i = i + iterations * 2, &results,&counter] {
+        high_executor([_i = i + iterations * 2, &results, &counter] {
             results[_i] = 3;
             ++counter;
         });
@@ -219,14 +220,15 @@ BOOST_AUTO_TEST_CASE(MeasureTiming) {
         }
     });
 
-
     unique_lock lock{block};
-    while (!done) ready.wait(lock);
+    while (!done)
+        ready.wait(lock);
 
     auto stop = std::chrono::high_resolution_clock::now();
-    std::cout << "\nPerformance measuring: " << std::chrono::duration<double>(stop - start).count() << "s\n";
+    std::cout << "\nPerformance measuring: " << std::chrono::duration<double>(stop - start).count()
+              << "s\n";
 
-    while (counter < 3*iterations) {
+    while (counter < 3 * iterations) {
         rest();
     }
 }

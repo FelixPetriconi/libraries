@@ -55,10 +55,10 @@ BOOST_AUTO_TEST_CASE(future_coroutine_void) {
 }
 
 stlab::future<int> get_the_answer_with_failure() {
-    auto result = co_await stlab::async(stlab::default_executor, [] {
+    auto result = co_await stlab::async([] {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         return 42;
-    });
+    } & stlab::default_executor);
     throw test_exception("failure");
 
     co_return result;
@@ -76,10 +76,10 @@ BOOST_AUTO_TEST_CASE(future_coroutine_int_failure) {
 }
 
 stlab::future<move_only> get_the_answer_move_only_with_failure() {
-    auto result = co_await stlab::async(stlab::default_executor, [] {
+    auto result = co_await stlab::async([] {
         std::this_thread::sleep_for(std::chrono::milliseconds(1000));
         return move_only{42};
-    });
+    } & stlab::default_executor);
     throw test_exception("failure");
 
     co_return std::move(result);
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(future_coroutine_combined_void_int) {
     std::atomic_int intCheck{0};
     std::atomic_bool boolCheck{false};
 
-    auto done = do_it(async(default_executor, [] { return 42; }), intCheck);
+    auto done = do_it(async([] { return 42; } & default_executor), intCheck);
     auto hold = done.then([&boolCheck] { boolCheck = true; });
 
     blocking_get(hold);

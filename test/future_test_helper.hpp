@@ -41,9 +41,7 @@ struct custom_scheduler {
 
     static int usage_counter() { return counter().load(); }
 
-    static void reset() {
-        counter() = 0;
-    }
+    static void reset() { counter() = 0; }
 
     static std::atomic_int& counter() {
         static std::atomic_int counter;
@@ -62,16 +60,6 @@ constexpr auto custom_scheduler_1 = custom_scheduler<1>{};
 
 auto stlab_is_executor [[maybe_unused]] (decltype(custom_scheduler_0)) -> std::true_type;
 auto stlab_is_executor [[maybe_unused]] (decltype(custom_scheduler_1)) -> std::true_type;
-
-template<std::size_t N>
-auto& make_executor() {
-    if constexpr (N == 0) {
-        return custom_scheduler_0;
-    }
-    else if constexpr (N == 1) {
-        return custom_scheduler_1;
-    }
-}
 
 class test_exception : public std::exception {
     std::string _error;
@@ -202,8 +190,8 @@ class test_functor_base : public P {
     std::atomic_int& _task_counter;
 
 public:
-    test_functor_base(F f, std::atomic_int& task_counter)
-        : _f(std::move(f)), _task_counter(task_counter) {}
+    test_functor_base(F f, std::atomic_int& task_counter) :
+        _f(std::move(f)), _task_counter(task_counter) {}
 
     ~test_functor_base() {}
 
