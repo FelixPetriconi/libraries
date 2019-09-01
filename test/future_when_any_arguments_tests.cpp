@@ -363,20 +363,20 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_arguments_with_diamond_formation_argume
         auto start = async([] { return 4711; } & make_executor<0>());
 
         auto a1 =
-            start | make_blocking_functor([](int x) { return x + 1; },
-                                                                    _task_counter, block_context) & make_executor<0>();
-        auto a2 = start | make_non_blocking_functor(
+            start | (make_blocking_functor([](int x) { return x + 1; },
+                                                                    _task_counter, block_context) & make_executor<0>());
+        auto a2 = start | (make_non_blocking_functor(
                                                         [& _context = block_context](auto x) {
                                                             _context._may_proceed = true;
                                                             return x + 2;
                                                         },
-                                                        _task_counter) & make_executor<0>();
+                                                        _task_counter) & make_executor<0>());
         auto a3 =
-            start | make_blocking_functor([](int x) { return x + 3; },
-                                                                    _task_counter, block_context) & make_executor<0>();
+            start | (make_blocking_functor([](int x) { return x + 3; },
+                                                                    _task_counter, block_context) & make_executor<0>());
         auto a4 =
-            start | make_blocking_functor([](int x) { return x + 5; },
-                                                                    _task_counter, block_context) & make_executor<0>();
+            start | (make_blocking_functor([](int x) { return x + 5; },
+                                                                    _task_counter, block_context) & make_executor<0>());
 
         sut = when_any([& _i = index](int x, size_t index) {
                            _i = index;

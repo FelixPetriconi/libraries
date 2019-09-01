@@ -316,21 +316,21 @@ BOOST_AUTO_TEST_CASE(future_when_any_void_range_with_diamond_formation_elements)
         lock_t block(*block_context._mutex);
         auto start = async([] { return 4711; } & make_executor<0>());
         std::vector<future<void>> futures;
-        futures.push_back(start | make_blocking_functor([& _result = intrim_results](auto x) { _result[0] = x + 1; },
-                                  _task_counter, block_context) & make_executor<0>());
+        futures.push_back(start | (make_blocking_functor([& _result = intrim_results](auto x) { _result[0] = x + 1; },
+                                  _task_counter, block_context) & make_executor<0>()));
         futures.push_back(start |
-            make_blocking_functor([& _result = intrim_results](auto x) { _result[1] = x + 2; },
-                                  _task_counter, block_context) & make_executor<0>());
+                              (make_blocking_functor([& _result = intrim_results](auto x) { _result[1] = x + 2; },
+                                  _task_counter, block_context) & make_executor<0>()));
         futures.push_back(start |
-            make_blocking_functor([& _result = intrim_results](auto x) { _result[2] = x + 3; },
-                                  _task_counter, block_context) & make_executor<0>());
+                              (make_blocking_functor([& _result = intrim_results](auto x) { _result[2] = x + 3; },
+                                  _task_counter, block_context) & make_executor<0>()));
         futures.push_back(
-            start | make_non_blocking_functor(
+            start | (make_non_blocking_functor(
                            [& _context = block_context, &_result = intrim_results](auto x) {
                                _result[3] = x;
                                _context._may_proceed = true;
                            },
-                           _task_counter) & make_executor<0>());
+                           _task_counter) & make_executor<0>()));
 
         sut = when_any([& _result = result, &_counter = any_task_execution_counter,
                         &_interim_results = intrim_results](size_t index) {
@@ -499,21 +499,21 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_range_with_diamond_formation_elements) 
         auto start = async([] { return 4711; } & make_executor<0>());
         std::vector<stlab::future<int>> futures;
         futures.push_back(
-            start | make_blocking_functor([](int x) { return x + 1; },
-                                                                    _task_counter, block_context) & make_executor<0>());
+            start | (make_blocking_functor([](int x) { return x + 1; },
+                                                                    _task_counter, block_context) & make_executor<0>()));
         futures.push_back(
-            start | make_non_blocking_functor(
+            start | (make_non_blocking_functor(
                                                   [& _context = block_context](auto x) {
                                                       _context._may_proceed = true;
                                                       return x + 2;
                                                   },
-                                                  _task_counter) & make_executor<0>());
+                                                  _task_counter) & make_executor<0>()));
         futures.push_back(
-            start | make_blocking_functor([](int x) { return x + 3; },
-                                                                    _task_counter, block_context) & make_executor<0>());
+            start | (make_blocking_functor([](int x) { return x + 3; },
+                                                                    _task_counter, block_context) & make_executor<0>()));
         futures.push_back(
-            start | make_blocking_functor([](int x) { return x + 5; },
-                                                                    _task_counter, block_context) & make_executor<0>());
+            start | (make_blocking_functor([](int x) { return x + 5; },
+                                                                    _task_counter, block_context) & make_executor<0>()));
 
         sut = when_any([& _i = index](int x, size_t index) {
                            _i = index;
@@ -551,21 +551,21 @@ BOOST_AUTO_TEST_CASE(future_when_any_move_only_range_with_diamond_formation_elem
     auto start = async([] { return 4711; } & make_executor<0>());
     std::vector<stlab::future<stlab::move_only>> futures;
     futures.push_back(
-      start | make_blocking_functor([](int x) { return stlab::move_only{ x + 1 }; },
-        _task_counter, block_context) & make_executor<0>());
+      start | (make_blocking_functor([](int x) { return stlab::move_only{ x + 1 }; },
+        _task_counter, block_context) & make_executor<0>()));
     futures.push_back(
-      start | make_non_blocking_functor(
+      start | (make_non_blocking_functor(
         [&_context = block_context](auto x) {
       _context._may_proceed = true;
       return stlab::move_only{ x + 2 };
     },
-        _task_counter) & make_executor<0>());
+        _task_counter) & make_executor<0>()));
     futures.push_back(
-      start | make_blocking_functor([](int x) { return stlab::move_only{ x + 3 }; },
-        _task_counter, block_context) & make_executor<0>());
+      start | (make_blocking_functor([](int x) { return stlab::move_only{ x + 3 }; },
+        _task_counter, block_context) & make_executor<0>()));
     futures.push_back(
-      start | make_blocking_functor([](int x) { return stlab::move_only{ x + 5 }; },
-        _task_counter, block_context) & make_executor<0>());
+      start | (make_blocking_functor([](int x) { return stlab::move_only{ x + 5 }; },
+        _task_counter, block_context) & make_executor<0>()));
 
     sut = when_any([&_i = index](stlab::move_only x, size_t index) {
       _i = index;

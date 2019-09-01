@@ -98,7 +98,7 @@ T blocking_get(future<T> x) {
     bool flag{false};
     std::condition_variable condition;
     std::mutex m;
-    auto hold = std::move(x) ^ [&](auto&& r) {
+    auto hold = std::move(x) ^ ([&](auto&& r) {
         if (r.exception())
             error = std::forward<decltype(r)>(r).exception();
         else
@@ -109,7 +109,7 @@ T blocking_get(future<T> x) {
             flag = true;
             condition.notify_one();
         }
-    } & immediate_executor;
+    } & immediate_executor);
     {
         std::unique_lock<std::mutex> lock{m};
         while (!flag) {

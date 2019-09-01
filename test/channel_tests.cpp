@@ -235,7 +235,7 @@ BOOST_AUTO_TEST_CASE(int_concatenate_channels_with_different_executor) {
     {
         atomic_int result{ 0 };
 
-        auto done = _receive[0] | [](int x) { return x + 1; } & immediate_executor | [&result](int x) { result = x; };
+        auto done = _receive[0] | ([](int x) { return x + 1; } & immediate_executor) | [&result](int x) { result = x; };
 
         _receive[0].set_ready();
 

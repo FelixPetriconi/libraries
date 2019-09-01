@@ -119,9 +119,9 @@ BOOST_AUTO_TEST_CASE(
                         _error = true;
                         throw test_exception("failure");
                     } & make_executor<0>()) ^
-            [](auto failedFuture) {
+            ([](auto failedFuture) {
                 check_failure<test_exception>(failedFuture, "failure");
-            } & make_executor<1>();
+            } & make_executor<1>());
 
         wait_until_future_completed(sut);
 
@@ -136,11 +136,11 @@ BOOST_AUTO_TEST_CASE(
     {
         auto error = false;
 
-        sut = (async([& _error = error] {
+        sut = async([& _error = error] {
                         _error = true;
                         throw test_exception("failure");
                     } & make_executor<0>()) ^
-               [](auto failedFuture) { check_failure<test_exception>(failedFuture, "failure"); } & make_executor<1>());
+            ([](auto failedFuture) { check_failure<test_exception>(failedFuture, "failure"); } & make_executor<1>());
 
         wait_until_future_completed(sut);
 
@@ -164,9 +164,9 @@ BOOST_AUTO_TEST_CASE(
 
         wait_until_future_fails<test_exception>(interim);
 
-        sut = interim ^ [](auto failedFuture) {
+        sut = interim ^ ([](auto failedFuture) {
             check_failure<test_exception>(failedFuture, "failure");
-        } & make_executor<1>();
+        } & make_executor<1>());
 
         wait_until_future_completed(sut);
 
@@ -187,9 +187,9 @@ BOOST_AUTO_TEST_CASE(
 
         wait_until_future_fails<test_exception>(interim);
 
-        sut = interim ^ [](auto failedFuture) {
+        sut = interim ^ ([](auto failedFuture) {
                   check_failure<test_exception>(failedFuture, "failure");
-              } & make_executor<1>();
+              } & make_executor<1>());
 
         wait_until_future_completed(sut);
 
@@ -308,9 +308,9 @@ BOOST_AUTO_TEST_CASE(
                             _error = true;
                             throw test_exception("failure");
                         } & make_executor<0>()) ^
-                            [](auto failedFuture) {
+                ([](auto failedFuture) {
                     check_failure<test_exception>(failedFuture, "failure");
-                } & make_executor<1>();
+                } & make_executor<1>());
         }
 
         wait_until_future_completed(sut);
@@ -333,9 +333,9 @@ BOOST_AUTO_TEST_CASE(
                             lock_t lock(_block);
                             _error = true;
                             throw test_exception("failure");
-                        } & make_executor<0>()) ^ [](auto failedFuture) {
+                        } & make_executor<0>()) ^ ([](auto failedFuture) {
                       check_failure<test_exception>(failedFuture, "failure");
-                  } & make_executor<1>();
+                  } & make_executor<1>());
         }
 
         wait_until_future_completed(sut);
@@ -363,9 +363,9 @@ BOOST_AUTO_TEST_CASE(
                 throw test_exception("failure");
             } & make_executor<0>());
 
-            sut = interim ^ [](auto failedFuture) {
+            sut = interim ^ ([](auto failedFuture) {
                 check_failure<test_exception>(failedFuture, "failure");
-            } & make_executor<1>();
+            } & make_executor<1>());
         }
 
         wait_until_future_completed(sut);
@@ -390,9 +390,9 @@ BOOST_AUTO_TEST_CASE(
                 throw test_exception("failure");
             } & make_executor<0>());
 
-            sut = interim ^ [](auto failedFuture) {
+            sut = interim ^ ([](auto failedFuture) {
                 check_failure<test_exception>(failedFuture, "failure");
-            } & make_executor<1>();
+            } & make_executor<1>());
         }
 
         wait_until_future_completed(sut);
@@ -412,13 +412,13 @@ BOOST_AUTO_TEST_CASE(future_recover_failure_during_when_all_on_lvalue) {
         auto f1 = async([]() -> int { throw test_exception("failure"); } & make_executor<0>());
         auto f2 = async([] { return 42; } & make_executor<1>());
 
-        sut = when_all([](int x, int y) { return x + y; } & make_executor<0>(), f1, f2) ^
-                [](auto error) {
+        sut = (when_all([](int x, int y) { return x + y; } & make_executor<0>(), f1, f2) ^
+            [](auto error) {
                 if (error.exception())
                     return 815;
                 else
                     return 0;
-            } | [&](int x) { result = x; };
+            }) | [&](int x) { result = x; };
 
         wait_until_future_completed(sut);
         BOOST_REQUIRE_EQUAL(815, result);
@@ -650,10 +650,10 @@ BOOST_AUTO_TEST_CASE(
                         _error = true;
                         throw test_exception("failure");
                     } & make_executor<0>()) ^
-                        [](auto failedFuture) {
+            ([](auto failedFuture) {
                 check_failure<test_exception>(failedFuture, "failure");
                 return 42;
-            } & make_executor<1>();
+            } & make_executor<1>());
 
         wait_until_future_completed(sut);
 
@@ -672,10 +672,10 @@ BOOST_AUTO_TEST_CASE(
         sut = async([& _error = error]() -> int {
                         _error = true;
                         throw test_exception("failure");
-                    } & make_executor<0>()) ^ [](auto failedFuture) {
+                    } & make_executor<0>()) ^ ([](auto failedFuture) {
                 check_failure<test_exception>(failedFuture, "failure");
                 return 42;
-            } & make_executor<1>();
+            } & make_executor<1>());
 
         wait_until_future_completed(sut);
 
@@ -699,10 +699,10 @@ BOOST_AUTO_TEST_CASE(
 
     wait_until_future_fails<test_exception>(interim);
 
-    sut = interim ^ [](auto failedFuture) {
+    sut = interim ^ ([](auto failedFuture) {
         check_failure<test_exception>(failedFuture, "failure");
         return 42;
-    } & make_executor<1>();
+    } & make_executor<1>());
 
     wait_until_future_completed(sut);
 
@@ -727,10 +727,10 @@ BOOST_AUTO_TEST_CASE(
             lock_t lock(_block);
             _error = true;
             throw test_exception("failure");
-        } & make_executor<0>()) ^ [](auto failedFuture) {
+        } & make_executor<0>()) ^ ([](auto failedFuture) {
             check_failure<test_exception>(failedFuture, "failure");
             return 42;
-        } & make_executor<1>();
+        } & make_executor<1>());
     }
 
     wait_until_future_completed(sut);
@@ -756,10 +756,10 @@ BOOST_AUTO_TEST_CASE(
             throw test_exception("failure");
         } & make_executor<0>());
 
-        sut = interim ^ [](auto failedFuture) {
+        sut = interim ^ ([](auto failedFuture) {
             check_failure<test_exception>(failedFuture, "failure");
             return 42;
-        } & make_executor<1>();
+        } & make_executor<1>());
     }
 
     wait_until_future_completed(sut);
@@ -833,10 +833,10 @@ BOOST_AUTO_TEST_CASE(
     sut = async([& _error = error]() -> move_only {
                     _error = true;
                     throw test_exception("failure");
-                } & make_executor<0>()) ^ [](auto failedFuture) {
+                } & make_executor<0>()) ^ ([](auto failedFuture) {
             check_failure<test_exception>(failedFuture, "failure");
             return move_only(42);
-        } & make_executor<1>();
+        } & make_executor<1>());
 
     auto result = wait_until_future_r_completed(sut);
 
@@ -858,10 +858,10 @@ BOOST_AUTO_TEST_CASE(
                         lock_t lock(_block);
                         _error = true;
                         throw test_exception("failure");
-                    } & make_executor<0>()) ^ [](auto failedFuture) {
+                    } & make_executor<0>()) ^ ([](auto failedFuture) {
                 check_failure<test_exception>(failedFuture, "failure");
                 return move_only(42);
-            } & make_executor<1>();
+            } & make_executor<1>());
     }
 
     auto result = wait_until_future_r_completed(sut);

@@ -100,7 +100,7 @@ BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_same_scheduler_then_on_rvalue) {
     {
         atomic_int p{0};
 
-        sut = async([& _p = p] { _p = 42; } & custom_scheduler_0) | [& _p = p] { _p += 42; } & default_executor;
+        sut = async([& _p = p] { _p = 42; } & custom_scheduler_0) | ([& _p = p] { _p += 42; } & default_executor);
 
         check_valid_future(sut);
         wait_until_future_completed(sut);
@@ -112,7 +112,7 @@ BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_same_scheduler_then_on_rvalue) {
     {
         atomic_int p{0};
 
-        sut = async([] { return 42; } & custom_scheduler_0) | [&_p = p](auto p) { _p = p; } & default_executor;
+        sut = async([] { return 42; } & custom_scheduler_0) | ([&_p = p](auto p) { _p = p; } & default_executor);
 
         check_valid_future(sut);
         wait_until_future_completed(sut);
@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(future_int_void_two_tasks_with_different_scheduler) {
     atomic_int p{0};
 
     sut = async([] { return 42; } & make_executor<0>()) |
-          [& _p = p](auto x) { _p = x + 42; } & make_executor<1>();
+        ([& _p = p](auto x) { _p = x + 42; } & make_executor<1>());
 
     check_valid_future(sut);
 
@@ -177,7 +177,7 @@ BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_different_scheduler) {
     atomic_int p{0};
 
     sut = async([& _p = p] { _p = 42; } & make_executor<0>()) |
-          [& _p = p] { _p += 42; } & make_executor<1>();
+        ([& _p = p] { _p += 42; } & make_executor<1>());
 
     check_valid_future(sut);
 
@@ -336,7 +336,7 @@ BOOST_AUTO_TEST_CASE(
     BOOST_TEST_MESSAGE(
         "running future copyable with non copyable as contination with different scheduler, then on r-value");
 
-    sut = async([] { return 42; } & make_executor<0>()) | [](auto x) { return move_only(x); } & make_executor<1>();
+    sut = async([] { return 42; } & make_executor<0>()) | ([](auto x) { return move_only(x); } & make_executor<1>());
 
     check_valid_future(sut);
     auto result = wait_until_future_r_completed(sut);
@@ -369,7 +369,7 @@ BOOST_AUTO_TEST_CASE(
 
     auto interim = async([] { return 42; } & make_executor<0>());
 
-    sut = interim | [](auto x) { return move_only(x); } & make_executor<1>();
+    sut = interim | ([](auto x) { return move_only(x); } & make_executor<1>());
 
     check_valid_future(sut);
     auto result = wait_until_future_r_completed(sut);
@@ -398,7 +398,7 @@ BOOST_AUTO_TEST_CASE(future_non_copyable_as_continuation_with_different_schedule
         "running future non copyable as contination with different scheduler, then on r-value");
 
 
-    sut = async([] { return move_only(42); } & make_executor<0>()) | [](auto x) { return move_only(x.member() * 2); } & make_executor<1>();
+    sut = async([] { return move_only(42); } & make_executor<0>()) | ([](auto x) { return move_only(x.member() * 2); } & make_executor<1>());
 
     check_valid_future(sut);
     auto result = wait_until_future_r_completed(sut);
@@ -649,9 +649,9 @@ BOOST_AUTO_TEST_CASE(future_int_two_tasks_with_same_scheduler_then_on_lvalue) {
 BOOST_AUTO_TEST_CASE(future_int_two_tasks_with_different_scheduler) {
     BOOST_TEST_MESSAGE("running future int two tasks with different scheduler");
 
-    sut = async([] { return 42; } & make_executor<0>()) | [](auto x) {
+    sut = async([] { return 42; } & make_executor<0>()) | ([](auto x) {
         return x + 42;
-    } & make_executor<1>();
+    } & make_executor<1>());
 
     check_valid_future(sut);
     wait_until_future_completed(sut);
@@ -683,10 +683,10 @@ BOOST_AUTO_TEST_CASE(future_void_int_two_tasks_with_different_scheduler) {
 
     atomic_int p{0};
 
-    sut = async([& _p = p] { _p = 42; } & make_executor<0>()) | [& _p = p] {
+    sut = async([& _p = p] { _p = 42; } & make_executor<0>()) | ([& _p = p] {
         _p += 42;
         return _p.load();
-    } & make_executor<1>();
+    } & make_executor<1>());
 
     check_valid_future(sut);
     wait_until_future_completed(sut);
@@ -926,14 +926,14 @@ BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_with_failing_1st_task) {
     atomic_int p{0};
 
     sut = async([]() -> int { throw test_exception("failure"); } & make_executor<0>());
-    auto f1 = sut | [& _p = p](auto x) -> int {
+    auto f1 = sut | ([& _p = p](auto x) -> int {
         _p += 1;
         return x + 42;
-    } & make_executor<0>();
-    auto f2 = sut | [& _p = p](auto x) -> int {
+    } & make_executor<0>());
+    auto f2 = sut | ([& _p = p](auto x) -> int {
         _p += 1;
         return x + 4177;
-    } & make_executor<0>();
+    } & make_executor<0>());
 
     wait_until_future_fails<test_exception>(f1, f2);
 
@@ -947,8 +947,8 @@ BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_where_one_of_the_2nd_task_fail
     BOOST_TEST_MESSAGE("running future int Y formation tasks where one of the 2nd tasks fails");
 
     sut = async([]() -> int { return 42; } & make_executor<0>());
-    auto f1 = sut | [](auto) -> int { throw test_exception("failure"); } & make_executor<0>();
-    auto f2 = sut | [](auto x) -> int { return x + 4711; } & make_executor<0>();
+    auto f1 = sut | ([](auto) -> int { throw test_exception("failure"); } & make_executor<0>());
+    auto f2 = sut | ([](auto x) -> int { return x + 4711; } & make_executor<0>());
 
     wait_until_future_completed(f2);
     wait_until_future_fails<test_exception>(f1);
@@ -962,8 +962,8 @@ BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_where_both_of_the_2nd_task_fai
     BOOST_TEST_MESSAGE("running future int Y formation tasks where both of the 2nd tasks fails");
 
     sut = async([]() -> int { return 42; } & make_executor<0>());
-    auto f1 = sut | [](auto) -> int { throw test_exception("failure1"); } & make_executor<0>();
-    auto f2 = sut | [](auto) -> int { throw test_exception("failure2"); } & make_executor<0>();
+    auto f1 = sut | ([](auto) -> int { throw test_exception("failure1"); } & make_executor<0>());
+    auto f2 = sut | ([](auto) -> int { throw test_exception("failure2"); } & make_executor<0>());
 
     wait_until_future_fails<test_exception>(f1, f2);
 
@@ -979,10 +979,10 @@ BOOST_AUTO_TEST_CASE(reduction_future_void_to_int_error) {
 
     sut = async([& _flag = first] {
               _flag = true;
-          }) | [& _flag = second]() -> future<int> {
+          }) | ([& _flag = second]() -> future<int> {
         (void)_flag;
         throw test_exception("failure");
-    } & default_executor;
+    } & default_executor);
 
     wait_until_future_fails<test_exception>(sut);
 
