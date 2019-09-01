@@ -31,8 +31,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_one_element) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_many_elements) {
@@ -52,8 +52,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_many_elements) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(1 * 7 + 2 * 11 + 3 * 13 + 5 * 17, *sut.get_try());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_ready_element) {
@@ -66,7 +66,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_ready_element) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_executor) {
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_executor) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_two_ready_element) {
@@ -94,7 +94,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_two_ready_element) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args) {
@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE(future_when_all_args) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(main_thread_id != *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -122,8 +122,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_move_only_with_one_element) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, (*sut.get_try()).member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_move_only_with_many_elements) {
@@ -145,8 +145,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_move_only_with_many_elements) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(1 * 7 + 2 * 11 + 3 * 13 + 5 * 17, (*sut.get_try()).member());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -172,8 +172,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_with_different_types) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(std::string("1 3.1415 Don't panic! 3 3"), *sut.get_try());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -191,8 +191,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_int_failure_with_one_element) {
     wait_until_future_fails<test_exception>(sut);
 
     check_failure<test_exception>(sut, "failure");
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_many_elements_one_failing) {
@@ -211,8 +211,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_many_elements_one_failing) {
     wait_until_future_fails<test_exception>(sut);
 
     check_failure<test_exception>(sut, "failure");
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_many_elements_all_failing) {
@@ -231,8 +231,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_many_elements_all_failing) {
     wait_until_future_fails<test_exception>(sut);
 
     check_failure<test_exception>(sut, "failure");
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -257,8 +257,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_with_different_types_one_failing) {
     wait_until_future_fails<test_exception>(sut);
 
     check_failure<test_exception>(sut, "failure");
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_with_different_types_all_failing) {
@@ -281,8 +281,8 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_with_different_types_all_failing) {
     wait_until_future_fails<test_exception>(sut);
 
     check_failure<test_exception>(sut, "failure");
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

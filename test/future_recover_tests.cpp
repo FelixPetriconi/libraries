@@ -24,7 +24,7 @@ BOOST_FIXTURE_TEST_SUITE(future_recover_void, test_fixture<void>)
 BOOST_AUTO_TEST_CASE(future_recover_failure_before_recover_initialized_on_rvalue) {
     BOOST_TEST_MESSAGE("running future recover, failure before recover initialized on r-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
     sut = (async([& _error = error]() -> void {
                _error = true;
@@ -36,13 +36,13 @@ BOOST_AUTO_TEST_CASE(future_recover_failure_before_recover_initialized_on_rvalue
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_GE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_GE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_recover_failure_before_recover_initialized_on_lvalue) {
     BOOST_TEST_MESSAGE("running future recover, failure before recover initialized on l-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
     auto interim = async([& _error = error] {
         _error = true;
@@ -57,7 +57,7 @@ BOOST_AUTO_TEST_CASE(future_recover_failure_before_recover_initialized_on_lvalue
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_EQUAL(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -77,8 +77,8 @@ BOOST_AUTO_TEST_CASE(
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_GE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -101,14 +101,14 @@ BOOST_AUTO_TEST_CASE(
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_recover_failure_after_recover_initialized_on_rvalue) {
     BOOST_TEST_MESSAGE("running future recover, failure after recover initialized on r-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
     auto interim = async([& _error = error] {
         _error = true;
@@ -123,13 +123,13 @@ BOOST_AUTO_TEST_CASE(future_recover_failure_after_recover_initialized_on_rvalue)
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_EQUAL(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_recover_failure_after_recover_initialized_on_lvalue) {
     BOOST_TEST_MESSAGE("running future recover, failure after recover initialized on l-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
     mutex block;
 
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(future_recover_failure_after_recover_initialized_on_lvalue)
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_GE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_GE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -173,8 +173,8 @@ BOOST_AUTO_TEST_CASE(
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_GE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -201,14 +201,14 @@ BOOST_AUTO_TEST_CASE(
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_GE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_recover_failure_during_when_all_on_lvalue) {
     BOOST_TEST_MESSAGE("running future recover while failed when_all on l-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     int result{0};
     auto f1 = async([]() -> int { throw test_exception("failure"); } & custom_scheduler_0);
     auto f2 = async([] { return 42; } & custom_scheduler_1);
@@ -232,7 +232,7 @@ BOOST_AUTO_TEST_CASE(
     future_recover_int_simple_recover_failure_before_recover_initialized_on_rvalue) {
     BOOST_TEST_MESSAGE("running future int recover, failure before recover initialized on r-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
 
     sut = async([& _error = error]() -> int {
@@ -254,7 +254,7 @@ BOOST_AUTO_TEST_CASE(
     future_recover_int_simple_recover_failure_before_recover_initialized_on_lvalue) {
     BOOST_TEST_MESSAGE("running future int recover, failure before recover initialized on l-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
     auto interim = async([& _error = error]() -> int {
         _error = true;
@@ -276,7 +276,7 @@ BOOST_AUTO_TEST_CASE(
     future_recover_int_simple_recover_failure_after_recover_initialized_on_rvalue) {
     BOOST_TEST_MESSAGE("running future int recover, failure after recover initialized on r-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
     mutex block;
 
@@ -304,7 +304,7 @@ BOOST_AUTO_TEST_CASE(
     future_recover_int_simple_recover_failure_after_recover_initialized_on_lvalue) {
     BOOST_TEST_MESSAGE("running future int recover, failure after recover initialized on l-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
     mutex block;
 
@@ -350,8 +350,8 @@ BOOST_AUTO_TEST_CASE(
 
     BOOST_REQUIRE_EQUAL(42, *sut.get_try());
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_GE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -376,8 +376,8 @@ BOOST_AUTO_TEST_CASE(
 
     BOOST_REQUIRE_EQUAL(42, *sut.get_try());
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -407,8 +407,8 @@ BOOST_AUTO_TEST_CASE(
 
     BOOST_REQUIRE_EQUAL(42, *sut.get_try());
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_GE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -436,8 +436,8 @@ BOOST_AUTO_TEST_CASE(
 
     BOOST_REQUIRE_EQUAL(42, *sut.get_try());
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_GE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -448,7 +448,7 @@ BOOST_AUTO_TEST_CASE(
     BOOST_TEST_MESSAGE(
         "running future move only type recover, failure before recover initialized on r-value");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
 
     sut = async([& _error = error]() -> move_only {
@@ -469,7 +469,7 @@ BOOST_AUTO_TEST_CASE(
 BOOST_AUTO_TEST_CASE(future_recover_move_only_types_recover_failure_after_recover_initialized) {
     BOOST_TEST_MESSAGE("running future move only type recover, failure after recover initialized");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     auto error = false;
     mutex block;
     {
@@ -513,8 +513,8 @@ BOOST_AUTO_TEST_CASE(
 
     BOOST_REQUIRE_EQUAL(42, result->member());
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_GE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -541,8 +541,8 @@ BOOST_AUTO_TEST_CASE(
 
     BOOST_REQUIRE_EQUAL(42, result->member());
     BOOST_REQUIRE(error);
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_GE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

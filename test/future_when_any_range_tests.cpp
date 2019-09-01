@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(future_when_any_void_void_empty_range) {
     wait_until_future_fails<stlab::future_error>(sut);
 
     BOOST_REQUIRE(!check);
-    BOOST_REQUIRE_EQUAL(0, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_EQUAL(0, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_void_empty_range) {
@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_void_empty_range) {
     wait_until_future_fails<stlab::future_error>(sut);
 
     BOOST_REQUIRE(!check);
-    BOOST_REQUIRE_EQUAL(0, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_EQUAL(0, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_void_void_range_with_one_element) {
@@ -68,8 +68,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_void_void_range_with_one_element) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_one_element) {
@@ -91,8 +91,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_one_element) {
 
     BOOST_REQUIRE_EQUAL(size_t(0), index);
     BOOST_REQUIRE_EQUAL(size_t(42), result);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_many_elements_first_succeeds) {
@@ -140,8 +140,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_many_elements_first_suc
     BOOST_REQUIRE_EQUAL(size_t(0), used_future_index);
     BOOST_REQUIRE_EQUAL(size_t(1), result);
     BOOST_REQUIRE_EQUAL(1, any_task_execution_counter.load());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_many_elements_middle_succeeds) {
@@ -191,8 +191,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_many_elements_middle_su
     BOOST_REQUIRE_EQUAL(size_t(2), used_future_index);
     BOOST_REQUIRE_EQUAL(size_t(3), result);
     BOOST_REQUIRE_EQUAL(1, any_task_execution_counter.load());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_many_elements_last_succeeds) {
@@ -241,8 +241,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_many_elements_last_succ
     BOOST_REQUIRE_EQUAL(size_t(3), used_future_index);
     BOOST_REQUIRE_EQUAL(size_t(5), result);
     BOOST_REQUIRE_EQUAL(1, any_task_execution_counter.load());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -280,8 +280,8 @@ BOOST_AUTO_TEST_CASE(
     BOOST_REQUIRE_EQUAL(size_t(2), index);
     BOOST_REQUIRE_EQUAL(3, result);
     BOOST_REQUIRE_EQUAL(1, any_task_execution_counter.load());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_many_elements_all_fails) {
@@ -313,8 +313,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_void_range_with_many_elements_all_fails
     BOOST_REQUIRE_EQUAL(size_t(4711), index);
     BOOST_REQUIRE_EQUAL(0, r);
     BOOST_WARN_GE(size_t(4), failures.load());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 /*
@@ -374,8 +374,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_void_range_with_diamond_formation_elements)
 
     BOOST_REQUIRE_EQUAL(4711, result.load());
     BOOST_REQUIRE_EQUAL(1, any_task_execution_counter.load());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -395,7 +395,7 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_int_empty_range) {
     wait_until_future_fails<stlab::future_error>(sut);
 
     BOOST_REQUIRE(!check);
-    BOOST_REQUIRE_EQUAL(0, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_EQUAL(0, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_int_range_with_one_element) {
@@ -417,8 +417,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_int_range_with_one_element) {
 
     BOOST_REQUIRE_EQUAL(size_t(0), index);
     BOOST_REQUIRE_EQUAL(4711, *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_int_range_with_many_elements) {
@@ -467,8 +467,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_int_range_with_many_elements) {
     BOOST_REQUIRE_EQUAL(size_t(3), used_future_index);
     BOOST_REQUIRE_EQUAL(5, *sut.get_try());
     BOOST_REQUIRE_EQUAL(1, any_task_execution_counter.load());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_when_any_int_int_range_with_many_elements_all_but_all_one_failing) {
@@ -515,8 +515,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_int_range_with_many_elements_all_but_al
     BOOST_REQUIRE_EQUAL(size_t(2), index);
     BOOST_REQUIRE_EQUAL(3, *sut.get_try());
     BOOST_WARN_GE(3, failures.load());
-    BOOST_REQUIRE_LE(4, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(4, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 /*
@@ -570,8 +570,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_int_range_with_diamond_formation_elements) 
 
     BOOST_REQUIRE_EQUAL(size_t(1), index);
     BOOST_REQUIRE_EQUAL(4711 + 2, *sut.get_try());
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 BOOST_AUTO_TEST_SUITE_END()
 
@@ -624,8 +624,8 @@ BOOST_AUTO_TEST_CASE(future_when_any_move_only_range_with_diamond_formation_elem
 
     BOOST_REQUIRE_EQUAL(size_t(1), index);
     BOOST_REQUIRE_EQUAL(4711 + 2, (*sut.get_try()).member());
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()

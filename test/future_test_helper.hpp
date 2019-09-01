@@ -83,16 +83,16 @@ public:
 
 struct test_setup {
     test_setup() {
-        custom_scheduler<0>::reset();
-        custom_scheduler<1>::reset();
+        custom_scheduler_0.reset();
+        custom_scheduler_1.reset();
     }
 };
 
 template <typename T>
 struct test_fixture {
     test_fixture() : _task_counter{0} {
-        custom_scheduler<0>::reset();
-        custom_scheduler<1>::reset();
+        custom_scheduler_0.reset();
+        custom_scheduler_1.reset();
     }
 
     ~test_fixture() {}

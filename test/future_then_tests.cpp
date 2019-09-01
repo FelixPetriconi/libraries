@@ -34,7 +34,7 @@ BOOST_AUTO_TEST_CASE(future_void_single_task) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, p);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_void_single_task_detached) {
@@ -134,7 +134,7 @@ BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_same_scheduler_then_on_lvalue) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, p);
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_void_two_tasks_with_same_scheduler) {
@@ -148,7 +148,7 @@ BOOST_AUTO_TEST_CASE(future_int_void_two_tasks_with_same_scheduler) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, p);
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_void_two_tasks_with_different_scheduler) {
@@ -164,8 +164,8 @@ BOOST_AUTO_TEST_CASE(future_int_void_two_tasks_with_different_scheduler) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, p);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_different_scheduler) {
@@ -181,8 +181,8 @@ BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_different_scheduler) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, p);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 /*
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(future_void_Y_formation_tasks_with_same_scheduler) {
 
     BOOST_REQUIRE_EQUAL(42 + 42, r1);
     BOOST_REQUIRE_EQUAL(42 + 4711, r2);
-    BOOST_REQUIRE_LE(3, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(3, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(reduction_future_void) {
@@ -285,7 +285,7 @@ BOOST_AUTO_TEST_CASE(future_non_copyable_single_task) {
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_then_non_copyable_detach) {
@@ -314,7 +314,7 @@ BOOST_AUTO_TEST_CASE(future_non_copyable_capture) {
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -328,7 +328,7 @@ BOOST_AUTO_TEST_CASE(
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -343,8 +343,8 @@ BOOST_AUTO_TEST_CASE(
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -360,7 +360,7 @@ BOOST_AUTO_TEST_CASE(
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(
@@ -376,8 +376,8 @@ BOOST_AUTO_TEST_CASE(
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_non_copyable_as_continuation_with_same_scheduler_then_on_rvalue) {
@@ -391,7 +391,7 @@ BOOST_AUTO_TEST_CASE(future_non_copyable_as_continuation_with_same_scheduler_the
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 * 2, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_non_copyable_as_continuation_with_different_scheduler_then_on_rvalue) {
@@ -405,8 +405,8 @@ BOOST_AUTO_TEST_CASE(future_non_copyable_as_continuation_with_different_schedule
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 * 2, result->member());
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -422,7 +422,7 @@ BOOST_AUTO_TEST_CASE(future_async_move_only_move_captured_to_result) {
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_async_moving_move_only_capture_to_result) {
@@ -436,7 +436,7 @@ BOOST_AUTO_TEST_CASE(future_async_moving_move_only_capture_to_result) {
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_async_mutable_move_move_only_capture_to_result) {
@@ -450,7 +450,7 @@ BOOST_AUTO_TEST_CASE(future_async_mutable_move_move_only_capture_to_result) {
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_continuation_moving_move_only_capture_to_result) {
@@ -465,7 +465,7 @@ BOOST_AUTO_TEST_CASE(future_continuation_moving_move_only_capture_to_result) {
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_continuation_async_mutable_move_move_only_capture_to_result) {
@@ -480,7 +480,7 @@ BOOST_AUTO_TEST_CASE(future_continuation_async_mutable_move_move_only_capture_to
     auto result = wait_until_future_r_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, result->member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(reduction_future_move_only_to_move_only) {
@@ -568,7 +568,7 @@ BOOST_AUTO_TEST_CASE(future_continuation_async_move_only_container) {
     BOOST_REQUIRE_EQUAL(10, result[0].member());
     BOOST_REQUIRE_EQUAL(42, result[1].member());
     BOOST_REQUIRE_EQUAL(50, result[2].member());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_SUITE_END()
@@ -584,7 +584,7 @@ BOOST_AUTO_TEST_CASE(future_int_single_task) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_single_task_get_try_on_rvalue) {
@@ -599,7 +599,7 @@ BOOST_AUTO_TEST_CASE(future_int_single_task_get_try_on_rvalue) {
 
     BOOST_REQUIRE_EQUAL(42, *sut.get_try());
     BOOST_REQUIRE_EQUAL(42, *test_result_2);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_single_task_detached) {
@@ -626,7 +626,7 @@ BOOST_AUTO_TEST_CASE(future_int_two_tasks_with_same_scheduler_then_on_rvalue) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_two_tasks_with_same_scheduler_then_on_lvalue) {
@@ -640,7 +640,7 @@ BOOST_AUTO_TEST_CASE(future_int_two_tasks_with_same_scheduler_then_on_lvalue) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_two_tasks_with_different_scheduler) {
@@ -653,8 +653,8 @@ BOOST_AUTO_TEST_CASE(future_int_two_tasks_with_different_scheduler) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_void_int_two_tasks_with_same_scheduler) {
@@ -671,7 +671,7 @@ BOOST_AUTO_TEST_CASE(future_void_int_two_tasks_with_same_scheduler) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, p);
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_void_int_two_tasks_with_different_scheduler) {
@@ -688,8 +688,8 @@ BOOST_AUTO_TEST_CASE(future_void_int_two_tasks_with_different_scheduler) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42, p);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_1.usage_counter());
 }
 
 /*
@@ -705,7 +705,7 @@ BOOST_AUTO_TEST_CASE(future_int_three_tasks_with_same_scheduler) {
     wait_until_future_completed(sut);
 
     BOOST_REQUIRE_EQUAL(42 + 42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(3, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(3, custom_scheduler_0.usage_counter());
 }
 
 /*
@@ -727,7 +727,7 @@ BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_with_same_scheduler) {
 
     BOOST_REQUIRE_EQUAL(42 + 42, *f1.get_try());
     BOOST_REQUIRE_EQUAL(42 + 4177, *f2.get_try());
-    BOOST_REQUIRE_LE(3, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(3, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(reduction_future_void_to_int) {
@@ -790,7 +790,7 @@ BOOST_AUTO_TEST_CASE(future_void_single_task_error) {
 
     wait_until_future_fails<test_exception>(sut);
     check_failure<test_exception>(sut, "failure");
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_void_two_tasks_error_in_1st_task_with_same_scheduler) {
@@ -804,7 +804,7 @@ BOOST_AUTO_TEST_CASE(future_void_two_tasks_error_in_1st_task_with_same_scheduler
     wait_until_future_fails<test_exception>(sut);
     check_failure<test_exception>(sut, "failure");
     BOOST_REQUIRE_EQUAL(0, p);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_void_two_tasks_error_in_2nd_task_with_same_scheduler) {
@@ -821,7 +821,7 @@ BOOST_AUTO_TEST_CASE(future_void_two_tasks_error_in_2nd_task_with_same_scheduler
 
     check_failure<test_exception>(sut, "failure");
     BOOST_REQUIRE_EQUAL(42, p);
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(reduction_future_void_to_void_error) {
@@ -879,13 +879,13 @@ BOOST_AUTO_TEST_CASE(future_int_single_task_error) {
     wait_until_future_fails<test_exception>(sut);
 
     check_failure<test_exception>(sut, "failure");
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_two_tasks_error_in_1st_task_with_same_scheduler) {
     BOOST_TEST_MESSAGE("running future int with two tasks which first fails");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     int p = 0;
 
     sut =
@@ -898,13 +898,13 @@ BOOST_AUTO_TEST_CASE(future_int_two_tasks_error_in_1st_task_with_same_scheduler)
 
     check_failure<test_exception>(sut, "failure");
     BOOST_REQUIRE_EQUAL(0, p);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_two_tasks_error_in_2nd_task_with_same_scheduler) {
     BOOST_TEST_MESSAGE("running future void with two tasks which second fails");
 
-    custom_scheduler<0>::reset();
+    custom_scheduler_0.reset();
     atomic_int p{0};
 
     sut = async([& _p = p] { _p = 42; } & custom_scheduler_0) |
@@ -914,7 +914,7 @@ BOOST_AUTO_TEST_CASE(future_int_two_tasks_error_in_2nd_task_with_same_scheduler)
 
     check_failure<test_exception>(sut, "failure");
     BOOST_REQUIRE_EQUAL(42, p);
-    BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(2, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_with_failing_1st_task) {
@@ -937,7 +937,7 @@ BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_with_failing_1st_task) {
     check_failure<test_exception>(f1, "failure");
     check_failure<test_exception>(f2, "failure");
     BOOST_REQUIRE_EQUAL(0, p);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_where_one_of_the_2nd_task_failing) {
@@ -952,7 +952,7 @@ BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_where_one_of_the_2nd_task_fail
 
     check_failure<test_exception>(f1, "failure");
     BOOST_REQUIRE_EQUAL(42 + 4711, *f2.get_try());
-    BOOST_REQUIRE_LE(3, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(3, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_where_both_of_the_2nd_task_failing) {
@@ -966,7 +966,7 @@ BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_where_both_of_the_2nd_task_fai
 
     check_failure<test_exception>(f1, "failure1");
     check_failure<test_exception>(f2, "failure2");
-    BOOST_REQUIRE_LE(3, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_LE(3, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(reduction_future_void_to_int_error) {

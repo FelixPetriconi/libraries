@@ -234,7 +234,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_constructed_minimal_fn, T, copyable_test_ty
         BOOST_REQUIRE(sut.valid() == false);
         BOOST_REQUIRE(sut.is_ready() == false);
     }
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_constructed_minimal_fn_with_parameters,
@@ -255,7 +255,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_constructed_minimal_fn_with_parameters,
 
         BOOST_WARN_EQUAL(T(42) + T(0), *sut.get_try());
     }
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_constructed_minimal_fn_moveonly) {
@@ -273,7 +273,7 @@ BOOST_AUTO_TEST_CASE(future_constructed_minimal_fn_moveonly) {
 
         BOOST_REQUIRE_EQUAL(42, sut.get_try()->member());
     }
-    BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE_EQUAL(1, custom_scheduler_0.usage_counter());
 }
 
 BOOST_AUTO_TEST_CASE(future_equality_tests) {
