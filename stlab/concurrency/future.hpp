@@ -723,6 +723,66 @@ public:
 
 /**************************************************************************************************/
 
+template <typename, typename = void>
+class promise;
+
+
+template<typename T>
+class promise<T, enable_if_copyable<T>> {
+    using ptr_t = std::shared_ptr<detail::shared_base<T>>;
+
+    ptr_t _p;
+
+    explicit promise(ptr_t p) : _p(std::move(p)) {}
+
+public:
+    using value_type = T;
+
+    promise() : _p(std::make_shared<detail::shared_base<T>>())
+    {}
+
+    ~promise() {
+      if (_p) _p->remove_promise();
+    }
+
+    promise(const promise& x) : _p(x._p) {
+      if (_p) _p->add_promise();
+    }
+
+    promise(promise&&) noexcept = default;
+
+    promise& operator=(const promise& x) {
+        auto tmp = x;
+        *this = std::move(tmp);
+        return *this;
+    }
+
+    promise& operator=(promise&& x) noexcept = default;
+
+    [[nodiscard]] future<T> get_future() const {
+        return future<T>(_p);
+    }
+
+    void set_value(T&& val) const {
+        if (_p) _p->set_value(identity{}, std::move(val));
+    }
+
+    void set_exception(std::exception_ptr error) const {
+        if (_p) _p->set_exception(error);
+    }
+
+    bool canceled() const {
+      return _p.use_count() == ;
+    }
+
+    template <typename F>
+    void observe_canceled(F&&) const { //where F models void()
+    }
+};
+
+
+/**************************************************************************************************/
+
 template <typename T>
 class [[nodiscard]] future<T, enable_if_copyable<T>> {
     using ptr_t = std::shared_ptr<detail::shared_base<T>>;
@@ -742,6 +802,9 @@ class [[nodiscard]] future<T, enable_if_copyable<T>> {
     friend auto package_with_broken_promise(E, F &&)
         -> std::pair<detail::packaged_task_from_signature_t<Signature>,
                      future<detail::result_of_t_<Signature>>>;
+
+    template <typename, typename>
+    friend class promise;
 
     friend struct detail::shared_base<T>;
 

@@ -11,7 +11,6 @@
 
 #include <stlab/concurrency/default_executor.hpp>
 #include <stlab/concurrency/future.hpp>
-#include <stlab/concurrency/immediate_executor.hpp>
 #include <stlab/concurrency/utility.hpp>
 
 #include <stlab/test/model.hpp>
@@ -24,7 +23,7 @@ using namespace future_test_helper;
 /**************************************************************************************************/
 
 template <class T>
-inline auto promise_future() {
+auto promise_future() {
     return package<T(T)>([](auto&& x) -> decltype(x) { return std::forward<decltype(x)>(x); });
 }
 
@@ -623,3 +622,15 @@ BOOST_AUTO_TEST_CASE(future_move_only_detach_with_execution) {
     BOOST_REQUIRE_EQUAL(counter._dtor, counter._move_ctor + 1);
     BOOST_REQUIRE_EQUAL(42, result);
 }
+
+
+BOOST_AUTO_TEST_CASE(promise_simple_test) {
+
+    promise<int> myPromise;
+    auto r = myPromise.get_future() | [](int val) { std::cout << val << "\n"; } & default_executor;
+
+    blocking_get(r);
+}
+
+
+
