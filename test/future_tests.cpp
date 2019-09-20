@@ -626,14 +626,28 @@ BOOST_AUTO_TEST_CASE(future_move_only_detach_with_execution) {
 
 BOOST_AUTO_TEST_CASE(promise_simple_test) {
 
-    promise<int> myPromise;
+    promise<int(int)> myPromise(identity{});
     auto r1 = myPromise.get_future() | [](int val) { std::cout << val << "\n"; } & default_executor;
-    auto r2 = myPromise.get_future() | [](int val) { std::cout << val << "\n"; } & default_executor;
     myPromise.set_value(42);
 
     blocking_get(r1);
-    blocking_get(r2);
 }
+
+BOOST_AUTO_TEST_CASE(promise_cancelation_test) {
+
+    std::atomic_bool wasCanceled{ false };
+    {
+        promise<int(int)> myPromise;
+        myPromise.observe_canceled([&wasCanceled]() mutable { wasCanceled = true; });
+
+        auto r1 = myPromise.get_future(); //| [](int val) { std::cout << val << "\n"; } &default_executor;
+    }
+
+    BOOST_REQUIRE(wasCanceled.load());
+}
+
+
+
 
 
 

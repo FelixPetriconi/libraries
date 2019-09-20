@@ -270,7 +270,7 @@ struct shared_base<T, enable_if_copyable<T>> : std::enable_shared_from_this<shar
     std::exception_ptr _exception;
     std::mutex _mutex;
     std::atomic_bool _ready{false};
-    task<void()> _cancelation;
+    task<void()> _cancellation;
     std::atomic_bool _canceled{false};
     then_t _then;
 
@@ -421,8 +421,12 @@ struct shared_base<T, enable_if_copyable<T>> : std::enable_shared_from_this<shar
     }
 
     template <typename F>
-    void set_cancelation(F&& f) const {
-        _cancelation = std::move(f);
+    void set_cancellation(F&& f) {
+        _cancellation = std::forward<F>(f);
+    }
+
+    bool canceled() const {
+        return _canceled;
     }
 };
 
@@ -438,7 +442,7 @@ struct shared_base<T, enable_if_not_copyable<T>> : std::enable_shared_from_this<
     std::exception_ptr _exception;
     std::mutex _mutex;
     std::atomic_bool _ready{false};
-    task<void()> _cancelation;
+    task<void()> _cancellation;
     std::atomic_bool _canceled{false};
     then_t _then;
 
@@ -522,6 +526,16 @@ struct shared_base<T, enable_if_not_copyable<T>> : std::enable_shared_from_this<
         }
         return {};
     }
+
+    template <typename F>
+    void set_cancellation(F&& f) {
+      _cancellation = std::forward<F>(f);
+    }
+
+    bool canceled() const {
+      return _canceled;
+    }
+
 };
 
 /**************************************************************************************************/
@@ -534,7 +548,7 @@ struct shared_base<void> : std::enable_shared_from_this<shared_base<void>> {
     std::exception_ptr _exception;
     std::mutex _mutex;
     std::atomic_bool _ready{false};
-    task<void()> _cancelation;
+    task<void()> _cancellation;
     std::atomic_bool _canceled{false};
     then_t _then;
 
@@ -626,7 +640,18 @@ struct shared_base<void> : std::enable_shared_from_this<shared_base<void>> {
 
     template <typename F, typename... Args>
     void set_value(F& f, Args&&... args);
+
+    template <typename F>
+    void set_cancellation(F&& f) {
+      _cancellation = std::forward<F>(f);
+    }
+
+    bool canceled() const {
+      return _canceled;
+    }
 };
+
+/**************************************************************************************************/
 
 template <typename R, typename... Args>
 struct shared<R(Args...)> : shared_base<R>, shared_task<Args...> {
@@ -641,15 +666,16 @@ struct shared<R(Args...)> : shared_base<R>, shared_task<Args...> {
     }
 
     void remove_promise() override {
+        // TODO FP Why is this necessary???
         if (std::is_same<R, reduced_t<R>>::value) {
             if (--_promise_count == 0) {
                 std::unique_lock<std::mutex> lock(this->_mutex);
                 if (!this->_ready) {
                     this->reset();
                     _f = function_t();
-                    shared_base<R>::_canceled = true;
-                    if (shared_base<R>::_cancelation)
-                        shared_base<R>::_cancelation();
+                    this->_canceled = true;
+                    if (this->_cancellation)
+                        this->_cancellation();
                     else
                         this->_exception = std::make_exception_ptr(
                             future_error(future_error_codes::broken_promise));
@@ -689,13 +715,16 @@ class packaged_task {
 
     explicit packaged_task(ptr_t p) : _p(std::move(p)) {}
 
+    template<typename>
+    friend class promise;
+
     template <typename Signature, typename E, typename F>
     friend auto package(E, F&&) -> std::pair<detail::packaged_task_from_signature_t<Signature>,
                                               future<detail::result_of_t_<Signature>>>;
 
-    template <typename Sig, typename F>
+    template <typename Signature, typename F>
     friend auto package(F&&)
-    -> std::pair<detail::packaged_task_from_signature_t<Sig>, future<detail::result_of_t_<Sig>>>;
+    -> std::pair<detail::packaged_task_from_signature_t<Signature>, future<detail::result_of_t_<Signature>>>;
 
     template <typename Signature, typename E, typename F>
     friend auto package_with_broken_promise(E, F&&)
@@ -737,32 +766,33 @@ public:
 
 /**************************************************************************************************/
 
-template <typename, typename = void>
-class promise;
-
-
-template<typename T>
-class promise<T, enable_if_copyable<T>> {
-    using ptr_t = std::shared_ptr<detail::shared_base<T>>;
-
+template<typename Sig>
+class promise
+{
+    using ptr_t = std::shared_ptr<detail::shared<Sig>>;
+    using wptr_t = std::weak_ptr<detail::shared<Sig>>;
     ptr_t _p;
-
-    explicit promise(ptr_t p) : _p(std::move(p)) {}
+    wptr_t _wp;
+    detail::packaged_task_from_signature_t<Sig> _packaged_task;
 
 public:
-    using value_type = T;
+    using value_type = detail::result_of_t_<Sig>;
 
-    promise() : _p(std::make_shared<detail::shared_base<T>>(immediate_executor))
+    promise()
+        : promise(identity{})
     {}
 
-    ~promise() {
-      //if (_p) _p->remove_promise();
-    }
+    template <typename F>
+    promise(F&& f)
+        : _p(std::make_shared<detail::shared<Sig>>(immediate_executor, std::forward<F>(f)))
+        , _wp(_p)
+        , _packaged_task(_p) {}
 
-    promise(const promise& x) : _p(x._p) {
-      //if (_p) _p->add_promise();
-    }
+    ////    auto p = std::make_shared<detail::shared<Sig>>(std::forward<E>(executor), std::forward<F>(f));
+    //return std::make_pair(detail::packaged_task_from_signature_t<Sig>(p),
+    //  future<detail::result_of_t_<Sig>>(p));
 
+    promise(const promise&) = default;
     promise(promise&&) noexcept = default;
 
     promise& operator=(const promise& x) {
@@ -773,28 +803,28 @@ public:
 
     promise& operator=(promise&& x) noexcept = default;
 
-    [[nodiscard]] future<T> get_future() const {
-        return future<T>(_p);
+    [[nodiscard]] auto get_future() {
+        return future<value_type>(std::move(_p));
     }
 
-    void set_value(T&& val) const {
-        if (_p) {
-            identity f;
-            _p->set_value(f, std::move(val));
-        }
+    template <typename... Args>
+    void set_value(Args&&... arg) {
+        _packaged_task(std::forward<Args>(arg)...);
     }
 
-    void set_exception(std::exception_ptr error) const {
-        if (_p) _p->set_exception(error);
+    void set_exception(std::exception_ptr error) {
+        _packaged_task.set_error(error);
     }
 
     bool canceled() const {
-      return _p.use_count() == 1;
+        auto p = _wp.lock();
+        return !p || p->canceled();
     }
 
     template <typename F>
-    void observe_canceled(F&& f) const {
-        if (_p) _p->set_cancelation(std::forward<F>(f));
+    void observe_canceled(F&& f) {
+      auto p = _wp.lock();
+      if (p) p->set_cancellation(std::forward<F>(f));
     }
 };
 
@@ -821,7 +851,7 @@ class [[nodiscard]] future<T, enable_if_copyable<T>> {
         -> std::pair<detail::packaged_task_from_signature_t<Signature>,
                      future<detail::result_of_t_<Signature>>>;
 
-    template <typename, typename>
+    template <typename>
     friend class promise;
 
     friend struct detail::shared_base<T>;
