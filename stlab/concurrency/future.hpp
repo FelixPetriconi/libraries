@@ -270,6 +270,8 @@ struct shared_base<T, enable_if_copyable<T>> : std::enable_shared_from_this<shar
     std::exception_ptr _exception;
     std::mutex _mutex;
     std::atomic_bool _ready{false};
+    task<void()> _cancelation;
+    std::atomic_bool _canceled{false};
     then_t _then;
 
     explicit shared_base(executor_t s) : _executor(std::move(s)) {}
@@ -417,6 +419,11 @@ struct shared_base<T, enable_if_copyable<T>> : std::enable_shared_from_this<shar
         }
         return {};
     }
+
+    template <typename F>
+    void set_cancelation(F&& f) const {
+        _cancelation = std::move(f);
+    }
 };
 
 /**************************************************************************************************/
@@ -431,6 +438,8 @@ struct shared_base<T, enable_if_not_copyable<T>> : std::enable_shared_from_this<
     std::exception_ptr _exception;
     std::mutex _mutex;
     std::atomic_bool _ready{false};
+    task<void()> _cancelation;
+    std::atomic_bool _canceled{false};
     then_t _then;
 
     explicit shared_base(executor_t s) : _executor(std::move(s)) {}
@@ -525,6 +534,8 @@ struct shared_base<void> : std::enable_shared_from_this<shared_base<void>> {
     std::exception_ptr _exception;
     std::mutex _mutex;
     std::atomic_bool _ready{false};
+    task<void()> _cancelation;
+    std::atomic_bool _canceled{false};
     then_t _then;
 
     explicit shared_base(executor_t s) : _executor(std::move(s)) {}
@@ -629,7 +640,6 @@ struct shared<R(Args...)> : shared_base<R>, shared_task<Args...> {
         _promise_count = 1;
     }
 
-
     void remove_promise() override {
         if (std::is_same<R, reduced_t<R>>::value) {
             if (--_promise_count == 0) {
@@ -637,8 +647,12 @@ struct shared<R(Args...)> : shared_base<R>, shared_task<Args...> {
                 if (!this->_ready) {
                     this->reset();
                     _f = function_t();
-                    this->_exception =
-                        std::make_exception_ptr(future_error(future_error_codes::broken_promise));
+                    shared_base<R>::_canceled = true;
+                    if (shared_base<R>::_cancelation)
+                        shared_base<R>::_cancelation();
+                    else
+                        this->_exception = std::make_exception_ptr(
+                            future_error(future_error_codes::broken_promise));
                     this->_ready = true;
                 }
             }
@@ -738,15 +752,15 @@ class promise<T, enable_if_copyable<T>> {
 public:
     using value_type = T;
 
-    promise() : _p(std::make_shared<detail::shared_base<T>>())
+    promise() : _p(std::make_shared<detail::shared_base<T>>(immediate_executor))
     {}
 
     ~promise() {
-      if (_p) _p->remove_promise();
+      //if (_p) _p->remove_promise();
     }
 
     promise(const promise& x) : _p(x._p) {
-      if (_p) _p->add_promise();
+      //if (_p) _p->add_promise();
     }
 
     promise(promise&&) noexcept = default;
@@ -764,7 +778,10 @@ public:
     }
 
     void set_value(T&& val) const {
-        if (_p) _p->set_value(identity{}, std::move(val));
+        if (_p) {
+            identity f;
+            _p->set_value(f, std::move(val));
+        }
     }
 
     void set_exception(std::exception_ptr error) const {
@@ -772,11 +789,12 @@ public:
     }
 
     bool canceled() const {
-      return _p.use_count() == ;
+      return _p.use_count() == 1;
     }
 
     template <typename F>
-    void observe_canceled(F&&) const { //where F models void()
+    void observe_canceled(F&& f) const {
+        if (_p) _p->set_cancelation(std::forward<F>(f));
     }
 };
 

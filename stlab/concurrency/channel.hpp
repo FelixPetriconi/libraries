@@ -126,13 +126,6 @@ I for_each_n(I p, N n, F f) {
     return p;
 }
 
-struct identity {
-    template <typename T>
-    T operator()(T&& x) const {
-        return std::forward<T>(x);
-    }
-};
-
 /**************************************************************************************************/
 
 template <typename>

@@ -627,9 +627,12 @@ BOOST_AUTO_TEST_CASE(future_move_only_detach_with_execution) {
 BOOST_AUTO_TEST_CASE(promise_simple_test) {
 
     promise<int> myPromise;
-    auto r = myPromise.get_future() | [](int val) { std::cout << val << "\n"; } & default_executor;
+    auto r1 = myPromise.get_future() | [](int val) { std::cout << val << "\n"; } & default_executor;
+    auto r2 = myPromise.get_future() | [](int val) { std::cout << val << "\n"; } & default_executor;
+    myPromise.set_value(42);
 
-    blocking_get(r);
+    blocking_get(r1);
+    blocking_get(r2);
 }
 
 
