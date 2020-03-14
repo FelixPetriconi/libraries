@@ -19,7 +19,7 @@
 
 #include <stlab/concurrency/default_executor.hpp>
 #include <stlab/concurrency/future.hpp>
-#include <stlab/concurrency/tuple_algorithm.hpp>
+#include <stlab/utility/tuple_algorithm.hpp>
 #include <stlab/concurrency/utility.hpp>
 
 /**************************************************************************************************/

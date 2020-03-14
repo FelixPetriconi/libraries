@@ -8,8 +8,8 @@ Copyright 2019 Adobe
 
 #include <boost/test/unit_test.hpp>
 
-#include <stlab/concurrency/traits.hpp>
 #include <stlab/test/model.hpp>
+#include <stlab/utility/traits.hpp>
 
 #include <vector>
 

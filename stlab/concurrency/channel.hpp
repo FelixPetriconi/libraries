@@ -23,9 +23,9 @@
 
 #include <stlab/concurrency/executor_base.hpp>
 #include <stlab/concurrency/optional.hpp>
-#include <stlab/concurrency/traits.hpp>
-#include <stlab/concurrency/tuple_algorithm.hpp>
 #include <stlab/concurrency/variant.hpp>
+#include <stlab/utility/traits.hpp>
+#include <stlab/utility/tuple_algorithm.hpp>
 #include <stlab/functional.hpp>
 #include <stlab/memory.hpp>
 
