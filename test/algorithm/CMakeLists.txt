@@ -1,22 +1,15 @@
 
 ################################################################################
 
-add_executable( stlab.test.tuple
-        tuple_test.cpp
-        tuple_algorithm_test.cpp
+add_executable( stlab.test.algorithm
+        clamp_test.cpp
+        median_test.cpp
+        minmax_test.cpp
+        select_test.cpp
         ../main.cpp )
 
-target_link_libraries( stlab.test.tuple PUBLIC stlab::testing )
-add_test( NAME stlab.test.tuple COMMAND stlab.test.tuple )
-
-################################################################################
-
-add_executable( stlab.test.traits
-        traits_test.cpp
-        ../main.cpp )
-
-target_link_libraries( stlab.test.traits PUBLIC stlab::testing )
-add_test( NAME stlab.test.traits COMMAND stlab.test.traits )
+target_link_libraries( stlab.test.algorithm PUBLIC stlab::testing )
+add_test( NAME stlab.test.algorithm COMMAND stlab.test.algorithm )
 
 ################################################################################
 #
@@ -24,8 +17,7 @@ add_test( NAME stlab.test.traits COMMAND stlab.test.traits )
 # are not dependent upon any such extension.
 #
 set_target_properties(
-  stlab.test.tuple
-  stlab.test.traits
+  stlab.test.algorithm
   PROPERTIES CXX_EXTENSIONS OFF )
 
 #
@@ -43,7 +35,6 @@ ProcessorCount(nProcessors)
 
 if(nProcessors)
   set_tests_properties(
-    stlab.test.tuple
-    stlab.test.traits
+    stlab.test.algorithm
     PROPERTIES PROCESSORS ${nProcessors})
 endif()

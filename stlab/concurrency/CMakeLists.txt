@@ -10,8 +10,6 @@ target_sources( stlab INTERFACE
     ${CMAKE_CURRENT_SOURCE_DIR}/progress.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/system_timer.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/task.hpp
-        ../utility/traits.hpp
-        ../utility/tuple_algorithm.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/utility.hpp
     ${CMAKE_CURRENT_SOURCE_DIR}/variant.hpp>
   $<INSTALL_INTERFACE:
@@ -27,9 +25,7 @@ target_sources( stlab INTERFACE
     include/stlab/concurrency/system_timer.hpp
     include/stlab/concurrency/task.hpp
     include/stlab/concurrency/utility.hpp
-    include/stlab/concurrency/variant.hpp
-    include/stlab/utility/traits.hpp
-    include/stlab/utility/tuple_algorithm.hpp >)
+    include/stlab/concurrency/variant.hpp>)
 
 if(CXX_COMPILER_ID MATCHES MSVC)
   if(CXX_COMPILER_VERSION VERSION_LESS 99)

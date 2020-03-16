@@ -215,7 +215,7 @@ install( TARGETS stlab coroutines EXPORT stlabTargets )
 # `include` subdirectory of the `$INSTALL_DIR/${CMAKE_INSTALL_PREFIX}`
 # directory. Source file permissions preserved.
 #
-install( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/stlab
+install( DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
   DESTINATION include
   USE_SOURCE_PERMISSIONS
   FILES_MATCHING
