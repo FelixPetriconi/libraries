@@ -36,8 +36,9 @@ struct is_member {
 
     is_member(I f, I l, O o = O()) : first(f), last(l), compare(o) {}
 
-    bool operator()(const typename boost::iterator_value<I>::type& x) const {
-        return binary_search(first, last, x, compare) != last;
+    //bool operator()(const typename boost::iterator_value<I>::type& x) const {
+    bool operator()(const typename std::iterator_traits<I>::value_type& x) const {
+            return binary_search(first, last, x, compare) != last;
     }
 
     I first;

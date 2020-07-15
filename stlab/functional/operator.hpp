@@ -11,7 +11,7 @@
 //#include <adobe/config.hpp>
 
 #include <functional>
-#include <typeinfo>
+//#include <typeinfo>
 
 /**************************************************************************************************/
 
@@ -170,7 +170,7 @@ struct delete_array {
 };
 
 /**************************************************************************************************/
-
+//TODO FP make variadic template
 template <class T>
 struct constructor {
     typedef T result_type;
@@ -218,21 +218,24 @@ struct indirect {
 /**************************************************************************************************/
 
 template <class T>
-struct bitwise_or : std::binary_function<T, T, T> {
+struct bitwise_or {
+    using result_type  = T;
     T operator()(const T& x, const T& y) const { return x | y; }
 };
 
 /**************************************************************************************************/
 
 template <class T>
-struct bitwise_and : std::binary_function<T, T, T> {
+struct bitwise_and {
+    using result_type = T;
     T operator()(const T& x, const T& y) const { return x & y; }
 };
 
 /**************************************************************************************************/
 
 template <class T>
-struct bitwise_xor : std::binary_function<T, T, T> {
+struct bitwise_xor {
+    using result_type = T;
     T operator()(const T& x, const T& y) const { return x ^ y; }
 };
 
@@ -240,7 +243,8 @@ struct bitwise_xor : std::binary_function<T, T, T> {
 
 /// \brief plus function object whose arguments may be of different type.
 template <typename T1, typename T2>
-struct plus_asymmetric : public std::binary_function<T1, T2, T1> {
+struct plus_asymmetric {
+    using result_type = T1;
     T1 operator()(T1 f1, T2 f2) const { return f1 + f2; }
 };
 
@@ -248,7 +252,8 @@ struct plus_asymmetric : public std::binary_function<T1, T2, T1> {
 
 /// \brief operator++ wrapped in a function object
 template <typename T>
-struct inc : public std::unary_function<T, T> {
+struct inc {
+    using result_type = T;
     T operator()(T x) const { return ++x; }
 };
 
@@ -256,7 +261,8 @@ struct inc : public std::unary_function<T, T> {
 
 /// \brief operator-- wrapped in a function object
 template <typename T>
-struct dec : public std::unary_function<T, T> {
+struct dec {
+    using result_type = T;
     T operator()(T x) const { return --x; }
 };
 

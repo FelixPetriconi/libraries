@@ -12,12 +12,9 @@
 
 #include <algorithm>
 #include <functional>
-
-#include <boost/range/begin.hpp>
-#include <boost/range/end.hpp>
+#include <boost/range/iterator.hpp>
 
 #include <stlab/algorithm/select.hpp>
-
 #include <stlab/functional/operator.hpp>
 
 /*************************************************************************************************/
@@ -29,24 +26,24 @@ namespace stlab {
 \defgroup minmax min / max
 \ingroup sorting
 
-\note adobe::max differs is stable with respect to sort order where std::max is not. That is:
+\note stlab::max differs is stable with respect to sort order where std::max is not. That is:
 
 <code>
 int a = 1;
 int b = 1;
 
-assert(&adobe::max(a, b) == b);
+assert(&stlab::max(a, b) == b);
 assert(&std::max(a, b) == a);
 </code>
 
-adobe::min and adobe::max also implement non-const forms which are not available in the standard
+stlab::min and stlab::max also implement non-const forms which are not available in the standard
 which allow the result to be used as an l-value.
 
 <code>
 int a = 1;
 int b = 2;
 
-adobe::min(a, b) = 10;
+stlab::min(a, b) = 10;
 
 assert(a == 10);
 </code>
@@ -204,7 +201,7 @@ inline T&(max)(T& a, T& b) {
 */
 template <class ForwardRange>
 inline typename boost::range_iterator<ForwardRange>::type min_element(ForwardRange& range) {
-    return std::min_element(boost::begin(range), boost::end(range));
+    return std::min_element(std::begin(range), std::end(range));
 }
 
 /*!
@@ -215,7 +212,7 @@ inline typename boost::range_iterator<ForwardRange>::type min_element(ForwardRan
 template <class ForwardRange>
 inline typename boost::range_const_iterator<ForwardRange>::type
 min_element(const ForwardRange& range) {
-    return std::min_element(boost::begin(range), boost::end(range));
+    return std::min_element(std::begin(range), std::end(range));
 }
 
 /*!
@@ -246,7 +243,7 @@ inline ForwardIterator min_element(ForwardIterator first, ForwardIterator last, 
 */
 template <class ForwardRange, class C>
 inline typename boost::range_iterator<ForwardRange>::type min_element(ForwardRange& range, C c) {
-    return stlab::min_element(boost::begin(range), boost::end(range), c);
+    return stlab::min_element(std::begin(range), std::end(range), c);
 }
 
 /*!
@@ -256,7 +253,7 @@ inline typename boost::range_iterator<ForwardRange>::type min_element(ForwardRan
 */
 template <class ForwardRange, class C, class P>
 inline typename boost::range_iterator<ForwardRange>::type min_element(ForwardRange& range, C c, P p) {
-    return stlab::min_element(boost::begin(range), boost::end(range), c, p);
+    return stlab::min_element(std::begin(range), std::end(range), c, p);
 }
 
 /*!
@@ -267,7 +264,7 @@ inline typename boost::range_iterator<ForwardRange>::type min_element(ForwardRan
 template <class ForwardRange, class C>
 inline typename boost::range_const_iterator<ForwardRange>::type
 min_element(const ForwardRange& range, C c) {
-    return stlab::min_element(boost::begin(range), boost::end(range), c);
+    return stlab::min_element(std::begin(range), std::end(range), c);
 }
 
 /*!
@@ -278,7 +275,7 @@ min_element(const ForwardRange& range, C c) {
 template <class ForwardRange, class C, class P>
 inline typename boost::range_const_iterator<ForwardRange>::type
 min_element(const ForwardRange& range, C c, P p) {
-    return stlab::min_element(boost::begin(range), boost::end(range), c, p);
+    return stlab::min_element(std::begin(range), std::end(range), c, p);
 }
 
 /*!
@@ -288,7 +285,7 @@ min_element(const ForwardRange& range, C c, P p) {
 */
 template <class ForwardRange>
 inline typename boost::range_iterator<ForwardRange>::type max_element(ForwardRange& range) {
-    return std::max_element(boost::begin(range), boost::end(range));
+    return std::max_element(std::begin(range), std::end(range));
 }
 
 /*!
@@ -299,7 +296,7 @@ inline typename boost::range_iterator<ForwardRange>::type max_element(ForwardRan
 template <class ForwardRange>
 inline typename boost::range_const_iterator<ForwardRange>::type
 max_element(const ForwardRange& range) {
-    return std::max_element(boost::begin(range), boost::end(range));
+    return std::max_element(std::begin(range), std::end(range));
 }
 
 /*!
@@ -330,7 +327,7 @@ inline ForwardIterator max_element(ForwardIterator first, ForwardIterator last, 
 */
 template <class ForwardRange, class C>
 inline typename boost::range_iterator<ForwardRange>::type max_element(ForwardRange& range, C c) {
-    return stlab::max_element(boost::begin(range), boost::end(range), c);
+    return stlab::max_element(std::begin(range), std::end(range), c);
 }
 
 /*!
@@ -340,7 +337,7 @@ inline typename boost::range_iterator<ForwardRange>::type max_element(ForwardRan
 */
 template <class ForwardRange, class C, class P>
 inline typename boost::range_iterator<ForwardRange>::type max_element(ForwardRange& range, C c, P p) {
-    return stlab::max_element(boost::begin(range), boost::end(range), c, p);
+    return stlab::max_element(std::begin(range), std::end(range), c, p);
 }
 
 /*!
@@ -351,7 +348,7 @@ inline typename boost::range_iterator<ForwardRange>::type max_element(ForwardRan
 template <class ForwardRange, class C>
 inline typename boost::range_const_iterator<ForwardRange>::type
 max_element(const ForwardRange& range, C c) {
-    return stlab::max_element(boost::begin(range), boost::end(range), c);
+    return stlab::max_element(std::begin(range), std::end(range), c);
 }
 
 /*!
@@ -362,7 +359,7 @@ max_element(const ForwardRange& range, C c) {
 template <class ForwardRange, class C, class P>
 inline typename boost::range_const_iterator<ForwardRange>::type
 max_element(const ForwardRange& range, C c, P p) {
-    return stlab::max_element(boost::begin(range), boost::end(range), c, p);
+    return stlab::max_element(std::begin(range), std::end(range), c, p);
 }
 
 /*************************************************************************************************/
