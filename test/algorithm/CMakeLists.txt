@@ -3,6 +3,7 @@
 
 add_executable( stlab.test.algorithm
         clamp_test.cpp
+        forest_test.cpp
         median_test.cpp
         minmax_test.cpp
         select_test.cpp
