@@ -2,6 +2,7 @@ if( NOT ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC"
       AND ${CMAKE_CXX_COMPILER_VERSION} VERSION_LESS "99.99.99"
       AND stlab.coroutines ) )
   add_executable( stlab.test.channel
+    channel_coroutine_test.cpp
     channel_functor_tests.cpp
     channel_merge_round_robin_tests.cpp
     channel_merge_unordered_tests.cpp

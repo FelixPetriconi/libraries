@@ -29,6 +29,50 @@
 #include <stlab/functional.hpp>
 #include <stlab/memory.hpp>
 
+
+
+#if defined(STLAB_FUTURE_COROUTINES)
+
+#if STLAB_CPP_VERSION_LESS_THAN(20)
+
+// as long as VS 2017 still accepts await as keyword, it is necessary to disable coroutine
+// support for the channels tests
+#ifdef __has_include
+#if __has_include(<experimental/coroutine>)
+#define STLAB_FUTURE_COROUTINES_SUPPORT() 1
+#include <experimental/coroutine>
+//#include <stlab/concurrency/default_executor.hpp>
+#include <stlab/concurrency/immediate_executor.hpp>
+
+#define STLAB_CORO_NAMESPACE std::experimental
+
+#endif
+#endif
+
+#else
+
+#ifdef __has_include
+#if __has_include(<coroutine>)
+#define STLAB_FUTURE_COROUTINES_SUPPORT() 1
+#include <coroutine>
+#include <stlab/concurrency/default_executor.hpp>
+#include <stlab/concurrency/immediate_executor.hpp>
+#endif
+#endif
+
+#define STLAB_CORO_NAMESPACE std
+
+
+#endif
+
+
+#if !defined(STLAB_FUTURE_COROUTINES_SUPPORT)
+#define STLAB_FUTURE_COROUTINES_SUPPORT() 0
+#endif
+
+#endif
+
+
 /**************************************************************************************************/
 
 namespace stlab {
@@ -1464,6 +1508,7 @@ public:
     }
 };
 
+
 /**************************************************************************************************/
 
 template <typename T>
@@ -1592,6 +1637,7 @@ public:
     }
 };
 
+
 /**************************************************************************************************/
 
 template <typename F>
@@ -1599,27 +1645,28 @@ struct function_process;
 
 template <typename R, typename... Args>
 struct function_process<R(Args...)> {
-    std::function<R(Args...)> _f;
-    std::function<R()> _bound;
-    bool _done = true;
+  std::function<R(Args...)> _f;
+  std::function<R()> _bound;
+  bool _done = true;
 
-    using signature = R(Args...);
+  using signature = R(Args...);
 
-    template <typename F>
-    function_process(F&& f) : _f(std::forward<F>(f)) {}
+  template <typename F>
+  function_process(F&& f) : _f(std::forward<F>(f)) {}
 
-    template <typename... A>
-    void await(A&&... args) {
-        _bound = std::bind(_f, std::forward<A>(args)...);
-        _done = false;
-    }
+  template <typename... A>
+  void await(A&&... args) {
+    _bound = std::bind(_f, std::forward<A>(args)...);
+    _done = false;
+  }
 
-    R yield() {
-        _done = true;
-        return _bound();
-    }
-    process_state_scheduled state() const { return _done ? await_forever : yield_immediate; }
+  R yield() {
+    _done = true;
+    return _bound();
+  }
+  process_state_scheduled state() const { return _done ? await_forever : yield_immediate; }
 };
+
 
 /**************************************************************************************************/
 
@@ -1630,5 +1677,114 @@ struct function_process<R(Args...)> {
 } // namespace stlab
 
 /**************************************************************************************************/
+
+
+//#if STLAB_FUTURE_COROUTINES_SUPPORT() == 1
+
+template <typename T, typename... Args>
+struct STLAB_CORO_NAMESPACE::coroutine_traits<stlab::receiver<T>, Args...> {
+    struct promise_type {
+        std::pair<stlab::sender<T>, stlab::receiver<T>> _channel;
+
+        promise_type() { _channel = stlab::channel<T>(stlab::immediate_executor); }
+
+        stlab::receiver<T> get_return_object() { return std::move(_channel.second); }
+
+        auto initial_suspend() const { return STLAB_CORO_NAMESPACE::suspend_never{}; }
+
+        auto final_suspend() const { return STLAB_CORO_NAMESPACE::suspend_never{}; }
+
+        template <typename U>
+        void return_value(U&& val) {
+            _channel.first(std::forward<U>(val));
+        }
+
+        void unhandled_exception() {
+            //_channel.first.set_exception(std::current_exception());
+        }
+    };
+};
+
+template <typename... Args>
+struct STLAB_CORO_NAMESPACE::coroutine_traits<stlab::receiver<void>, Args...> {
+    struct promise_type {
+        stlab::receiver<void> _receiver;
+
+        promise_type() { _receiver = stlab::channel<void>(stlab::immediate_executor); }
+
+        stlab::receiver<void> get_return_object() { return _receiver; }
+
+        auto initial_suspend() const { return STLAB_CORO_NAMESPACE::suspend_never{}; }
+
+        auto final_suspend() const { return STLAB_CORO_NAMESPACE::suspend_never{}; }
+
+        void return_void() {}
+
+        void unhandled_exception() {
+            //_promise.first.set_exception(std::current_exception());
+        }
+    };
+};
+
+template <typename R>
+auto operator co_await(stlab::receiver<R> receiver) {
+    struct Awaiter {
+        struct helper_process {
+            stlab::process_state_scheduled _state = stlab::await_forever;
+            STLAB_CORO_NAMESPACE::coroutine_handle<> _ch;
+            R _value;
+
+            auto state() const { return _state; }
+            void await(R value) {
+                _value = std::move(value);
+                _state = stlab::yield_immediate;
+                _ch.resume();
+            }
+            void yield() {
+                _state = stlab::await_forever;
+            }
+        };
+
+        helper_process _helper;
+        stlab::receiver<R> _receiver;
+
+        Awaiter(stlab::receiver<R> receiver) {
+            _receiver = std::move(receiver) | std::ref(_helper);
+            _receiver.set_ready();
+        }
+
+        bool await_ready() {
+            return _receiver.ready() && _helper.state() == stlab::yield_immediate;
+        }
+
+        auto await_resume() { return std::move(_helper._value); }
+
+        void await_suspend(STLAB_CORO_NAMESPACE::coroutine_handle<> ch) noexcept {
+            _helper._ch = std::move(ch);
+        }
+    };
+    return Awaiter{std::move(receiver)};
+}
+/*
+inline auto operator co_await(stlab::future<void> f) {
+  struct Awaiter {
+    stlab::future<void> _input;
+
+    inline bool await_ready() { return _input.is_ready(); }
+
+    inline auto await_resume() {}
+
+    inline void await_suspend(STLAB_CORO_NAMESPACE::coroutine_handle<> ch) {
+      std::move(_input)
+        .then(stlab::default_executor, [ch]() mutable { ch.resume(); })
+        .detach();
+    }
+  };
+  return Awaiter{ std::move(f) };
+}
+*/
+
+//#endif
+
 
 #endif

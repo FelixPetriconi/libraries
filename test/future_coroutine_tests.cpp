@@ -82,7 +82,7 @@ stlab::future<move_only> get_the_answer_move_only_with_failure() {
     });
     throw test_exception("failure");
 
-    co_return std::move(result);
+    co_return result;
 }
 
 BOOST_AUTO_TEST_CASE(future_coroutine_move_only_failure) {

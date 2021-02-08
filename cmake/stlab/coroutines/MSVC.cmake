@@ -11,7 +11,7 @@ if( CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 15.0.0)
     message( WARNING "${CMAKE_CXX_COMPILER_ID}-${CMAKE_CXX_COMPILER_VERSION} does not support coroutines (as used by stlab)." )
     message( STATUS "Coroutines will not be used in testing" )
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 99.99.99)
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_LESS 16.8.4)
     # TODO: replace version number
     # 99.99.99 is a place holder for a future microsoft compiler version that resolves
     # the await/co_await issue in the channels header observed in current MSVC compilers.
@@ -38,7 +38,7 @@ string( CONCAT activate
 # If using MSVC and active, set the coroutines flag
 #
 target_compile_options( coroutines INTERFACE
-  $<$<AND:$<CXX_COMPILER_ID:MSVC>,${active}>:/await> )
+  $<$<AND:$<CXX_COMPILER_ID:MSVC>,${active}>:/await /permissive-> )
 
 #
 # If using MSVC and active, set a preprocessor definition to enable

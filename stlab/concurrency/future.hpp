@@ -28,19 +28,45 @@
 #include <stlab/functional.hpp>
 #include <stlab/utility.hpp>
 
+#if defined(STLAB_FUTURE_COROUTINES)
+
+#if STLAB_CPP_VERSION_LESS_THAN(20)
+
 // as long as VS 2017 still accepts await as keyword, it is necessary to disable coroutine
 // support for the channels tests
 #ifdef __has_include
-#if __has_include(<experimental/coroutine>) && STLAB_FUTURE_COROUTINES
+#if __has_include(<experimental/coroutine>)
 #define STLAB_FUTURE_COROUTINES_SUPPORT() 1
 #include <experimental/coroutine>
+#include <stlab/concurrency/default_executor.hpp>
+#include <stlab/concurrency/immediate_executor.hpp>
+
+#define STLAB_CORO_NAMESPACE std::experimental
+
+#endif
+#endif
+
+#else
+
+#ifdef __has_include
+#if __has_include(<coroutine>)
+#define STLAB_FUTURE_COROUTINES_SUPPORT() 1
+#include <coroutine>
 #include <stlab/concurrency/default_executor.hpp>
 #include <stlab/concurrency/immediate_executor.hpp>
 #endif
 #endif
 
+#define STLAB_CORO_NAMESPACE std
+
+
+#endif
+
+
 #if !defined(STLAB_FUTURE_COROUTINES_SUPPORT)
 #define STLAB_FUTURE_COROUTINES_SUPPORT() 0
+#endif
+
 #endif
 /**************************************************************************************************/
 
@@ -1911,21 +1937,21 @@ auto shared_base<void>::reduce(future<future<R>>&& r) -> future<R> {
 #if STLAB_FUTURE_COROUTINES_SUPPORT() == 1
 
 template <typename T, typename... Args>
-struct std::experimental::coroutine_traits<stlab::future<T>, Args...> {
+struct STLAB_CORO_NAMESPACE::coroutine_traits<stlab::future<T>, Args...> {
     struct promise_type {
         std::pair<stlab::packaged_task<T>, stlab::future<T>> _promise;
 
         promise_type() {
-            _promise = stlab::package<T(T)>(stlab::immediate_executor, [](auto&& x) -> decltype(x) {
-                return std::forward<decltype(x)>(x);
+            _promise = stlab::package<T(T)>(stlab::immediate_executor, [](auto x) -> decltype(x) {
+                return x;
             });
         }
 
         stlab::future<T> get_return_object() { return std::move(_promise.second); }
 
-        auto initial_suspend() const { return std::experimental::suspend_never{}; }
+        auto initial_suspend() const { return STLAB_CORO_NAMESPACE::suspend_never{}; }
 
-        auto final_suspend() const { return std::experimental::suspend_never{}; }
+        auto final_suspend() const { return STLAB_CORO_NAMESPACE::suspend_never{}; }
 
         template <typename U>
         void return_value(U&& val) {
@@ -1936,28 +1962,30 @@ struct std::experimental::coroutine_traits<stlab::future<T>, Args...> {
     };
 };
 
+
 template <typename... Args>
-struct std::experimental::coroutine_traits<stlab::future<void>, Args...> {
+struct STLAB_CORO_NAMESPACE::coroutine_traits<stlab::future<void>, Args...> {
     struct promise_type {
         std::pair<stlab::packaged_task<>, stlab::future<void>> _promise;
 
-        inline promise_type() {
+        promise_type() {
             _promise = stlab::package<void()>(stlab::immediate_executor, []() {});
         }
 
-        inline stlab::future<void> get_return_object() { return _promise.second; }
+        stlab::future<void> get_return_object() { return _promise.second; }
 
-        inline auto initial_suspend() const { return std::experimental::suspend_never{}; }
+        auto initial_suspend() const { return STLAB_CORO_NAMESPACE::suspend_never{}; }
 
-        inline auto final_suspend() const { return std::experimental::suspend_never{}; }
+        auto final_suspend() const { return STLAB_CORO_NAMESPACE::suspend_never{}; }
 
-        inline void return_void() { _promise.first(); }
+        void return_void() { _promise.first(); }
 
-        inline void unhandled_exception() {
+        void unhandled_exception() {
             _promise.first.set_exception(std::current_exception());
         }
     };
 };
+
 
 template <typename R>
 auto operator co_await(stlab::future<R> f) {
@@ -1969,12 +1997,10 @@ auto operator co_await(stlab::future<R> f) {
 
         auto await_resume() { return std::move(_result); }
 
-        void await_suspend(std::experimental::coroutine_handle<> ch) {
-            std::move(_input)
-                .then(stlab::default_executor,
-                      [this, ch](auto&& result) mutable {
-                          this->_result = std::forward<decltype(result)>(result);
-                          ch.resume();
+        void await_suspend(STLAB_CORO_NAMESPACE::coroutine_handle<> ch) noexcept {
+            std::move(_input).then([this, _ch = std::move(ch)](auto result) {
+                          this->_result = std::move(result);
+                          _ch.resume();
                       })
                 .detach();
         }
@@ -1986,14 +2012,12 @@ inline auto operator co_await(stlab::future<void> f) {
     struct Awaiter {
         stlab::future<void> _input;
 
-        inline bool await_ready() { return _input.is_ready(); }
+        bool await_ready() { return _input.is_ready(); }
 
-        inline auto await_resume() {}
+        auto await_resume() {}
 
-        inline void await_suspend(std::experimental::coroutine_handle<> ch) {
-            std::move(_input)
-                .then(stlab::default_executor, [ch]() mutable { ch.resume(); })
-                .detach();
+        void await_suspend(STLAB_CORO_NAMESPACE::coroutine_handle<> ch) {
+            std::move(_input).then([_ch = std::move(ch)]()  { _ch.resume(); }).detach();
         }
     };
     return Awaiter{std::move(f)};
