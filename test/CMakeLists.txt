@@ -42,17 +42,18 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.future
+  future_blocking_get_tests.cpp
   future_recover_tests.cpp
   future_test_helper.cpp
+  future_test_helper.hpp
   future_tests.cpp
   future_then_tests.cpp
   future_when_all_arguments_tests.cpp
   future_when_all_range_tests.cpp
   future_when_any_arguments_tests.cpp
   future_when_any_range_tests.cpp
-  tuple_algorithm_test.cpp
   main.cpp
-  future_test_helper.hpp )
+ )
 
 target_sources( stlab.test.future PUBLIC
   $<$<BOOL:$<TARGET_PROPERTY:COROUTINES>>:future_coroutine_tests.cpp> )
@@ -116,9 +117,10 @@ add_test(
 
 add_executable( stlab.test.tuple
   tuple_test.cpp
+  tuple_algorithm_test.cpp
   main.cpp )
 
-target_compile_definitions(stlab.test.channel PRIVATE STLAB_UNIT_TEST)
+target_compile_definitions(stlab.test.tuple PRIVATE STLAB_UNIT_TEST)
 
 target_link_libraries( stlab.test.tuple PUBLIC stlab::testing )
 
@@ -133,7 +135,7 @@ add_executable( stlab.test.traits
         traits_test.cpp
         main.cpp )
 
-target_compile_definitions(stlab.test.channel PRIVATE STLAB_UNIT_TEST)
+target_compile_definitions(stlab.test.traits PRIVATE STLAB_UNIT_TEST)
 
 target_link_libraries( stlab.test.traits PUBLIC stlab::testing )
 
