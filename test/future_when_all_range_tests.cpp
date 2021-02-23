@@ -20,6 +20,8 @@
 using namespace stlab;
 using namespace future_test_helper;
 
+#if 0
+
 BOOST_FIXTURE_TEST_SUITE(future_when_all_range_void, test_fixture<void>)
 BOOST_AUTO_TEST_CASE(future_when_all_void_void_empty_range) {
     BOOST_TEST_MESSAGE("running future when_all void -> void with empty range");
@@ -611,3 +613,5 @@ BOOST_AUTO_TEST_CASE(future_when_all_void_range_with_one_fails_ofmany_elements_a
 
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif

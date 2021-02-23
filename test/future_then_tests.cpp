@@ -20,196 +20,182 @@ using namespace std;
 using namespace stlab;
 using namespace future_test_helper;
 
-BOOST_FIXTURE_TEST_SUITE(future_then_void, test_fixture<void>)
+using test_configuration = boost::mpl::list<
+    std::pair<detail::immediate_executor_type, future_test_helper::copyable_test_fixture>,
+    std::pair<detail::immediate_executor_type, future_test_helper::moveonly_test_fixture>,
+    std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>>;
 
-BOOST_AUTO_TEST_CASE(future_void_single_task) {
-    BOOST_TEST_MESSAGE("running future void single task");
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_single_task, T, test_configuration) {
+    BOOST_TEST_MESSAGE("running future single task"
+                       << typeid(typename T::second_type::value_type).name());
 
-    int p = 0;
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    test_fixture_t testFixture{1};
+    test_executor_t executor;
 
-    sut = async(make_executor<0>(), [& _p = p] { _p = 42; });
+    executor_wrapper<test_executor_t> wrappedExecutor{executor};
 
-    check_valid_future(sut);
-    wait_until_future_completed(sut);
+    auto sut = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
+    wrappedExecutor.batch();
 
-    BOOST_REQUIRE_EQUAL(42, p);
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
+    BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+    BOOST_REQUIRE_LE(1, wrappedExecutor.counter());
 }
 
-BOOST_AUTO_TEST_CASE(future_void_single_task_detached) {
-    BOOST_TEST_MESSAGE("running future void single task detached");
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_same_executor_then_on_rvalue,
+                              T,
+                              test_configuration) {
+    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on r-value"
+                       << typeid(typename T::second_type::value_type).name());
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
 
-    atomic_int p{0};
-    {
-        auto detached = async(make_executor<0>(), [& _p = p] { _p = 42; });
-        detached.detach();
-    }
-    while (p.load() != 42) {
-    }
-}
+    using task_t = task<value_type(value_type)>;
+    using op_t = future<value_type> (future<value_type>::*)(task_t &&)&&;
 
-BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_same_scheduler_then_on_rvalue) {
-    BOOST_TEST_MESSAGE("running future void with two task on same scheduler, then on r-value");
+    op_t ops[] = {static_cast<op_t>(&future<value_type>::template then<task_t>),
+                  static_cast<op_t>(&future<value_type>::template operator|<task_t>)};
 
-    /* because of a gcc version < 6 bug, it is not possible to use the following
-    using task_t = function<void()>;
-    using op_t = future<void>(future<void>::*)(task_t&&)&&;
+    for (const auto& op : ops) {
+        test_fixture_t testFixture{2};
+        test_executor_t executor;
 
-    op_t ops[] = {static_cast<op_t>(&future<void>::then<task_t>),
-                  static_cast<op_t>(&future<void>::operator|<task_t>)};
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+        auto sut = (async(std::ref(wrappedExecutor), testFixture.void_to_value_type()).*
+                    op)(testFixture.value_type_to_value_type());
+        wrappedExecutor.batch();
 
-    for (const auto& op : ops)
-    */
-    {
-        atomic_int p{0};
-
-        sut = async(make_executor<0>(), [& _p = p] { _p = 42; }).then([& _p = p] { _p += 42; });
-
-        check_valid_future(sut);
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
-    }
-    {
-        atomic_int p{0};
-
-        sut = async(make_executor<0>(), [& _p = p] { _p = 42; }) | [& _p = p] { _p += 42; };
-
-        check_valid_future(sut);
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_LE(2, wrappedExecutor.counter());
     }
 }
 
-BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_same_scheduler_then_on_lvalue) {
-    BOOST_TEST_MESSAGE("running future void with two task on same scheduler, then on l-value");
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_with_same_executor_then_on_lvalue,
+                              T,
+                              test_configuration) {
+    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on l-value"
+                       << typeid(typename T::second_type::value_type).name());
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
 
     {
-        atomic_int p{0};
-        auto interim = async(make_executor<0>(), [& _p = p] { _p = 42; });
+        test_fixture_t testFixture{2};
+        test_executor_t executor;
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
 
-        sut = interim.then([& _p = p] { _p += 42; });
+        auto l_value = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
+        auto sut =
+            test_fixture_t::move_if_moveonly(l_value).then(testFixture.value_type_to_value_type());
+        wrappedExecutor.batch();
 
-        check_valid_future(sut);
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_LE(2, wrappedExecutor.counter());
     }
     {
-        atomic_int p{0};
-        auto interim = async(make_executor<0>(), [& _p = p] { _p = 42; });
+        test_fixture_t testFixture{2};
+        test_executor_t executor;
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
 
-        sut = interim | [& _p = p] { _p += 42; };
+        auto l_value = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
+        auto sut =
+            test_fixture_t::move_if_moveonly(l_value) | testFixture.value_type_to_value_type();
+        wrappedExecutor.batch();
 
-        check_valid_future(sut);
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(future_int_void_two_tasks_with_same_scheduler) {
-    BOOST_TEST_MESSAGE("running future int void tasks with same scheduler");
-
-    {
-        atomic_int p{0};
-
-        sut =
-            async(make_executor<0>(), [] { return 42; }).then([& _p = p](auto x) { _p = x + 42; });
-        check_valid_future(sut);
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
-    }
-    {
-        atomic_int p{0};
-
-        sut = async(make_executor<0>(), [] { return 42; }) | [& _p = p](auto x) { _p = x + 42; };
-        check_valid_future(sut);
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(2, custom_scheduler<0>::usage_counter());
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_LE(2, wrappedExecutor.counter());
     }
 }
 
-BOOST_AUTO_TEST_CASE(future_int_void_two_tasks_with_different_scheduler) {
-    BOOST_TEST_MESSAGE("running future int void tasks with different schedulers");
-
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_then_on_rvalue,
+                              T,
+                              test_configuration) {
+    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on r-value"
+                       << typeid(typename T::second_type::value_type).name());
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
     {
-        atomic_int p{0};
+        test_fixture_t testFixture{2};
+        test_executor_t executor1, executor2;
 
-        sut = async(make_executor<0>(), [] {
-                  return 42;
-              }).then(make_executor<1>(), [& _p = p](auto x) { _p = x + 42; });
-        check_valid_future(sut);
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
 
-        wait_until_future_completed(sut);
+        auto sut = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type()).then(std::ref(wrappedExecutor2), testFixture.value_type_to_value_type());
 
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+        wrappedExecutor1.batch();
+        wrappedExecutor2.batch();
+
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_LE(1, wrappedExecutor2.counter());
     }
     {
-        atomic_int p{0};
+      test_fixture_t testFixture{2};
+      test_executor_t executor1, executor2;
 
-        sut = async(make_executor<0>(), [] { return 42; }) |
-              (executor{make_executor<1>()} & [& _p = p](auto x) { _p = x + 42; });
+      executor_wrapper<test_executor_t> wrappedExecutor1{ executor1 };
+      executor_wrapper<test_executor_t> wrappedExecutor2{ executor2 };
 
-        check_valid_future(sut);
+      auto sut = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type()) | (executor{ std::ref(wrappedExecutor2) } & testFixture.value_type_to_value_type());
 
-        wait_until_future_completed(sut);
+      wrappedExecutor1.batch();
+      wrappedExecutor2.batch();
 
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+      BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+      BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
+      BOOST_REQUIRE_LE(1, wrappedExecutor2.counter());
+    }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_then_on_lvalue,
+                              T,
+                              test_configuration) {
+    BOOST_TEST_MESSAGE("future value_type to void on different executor, then on l-value"
+                       << typeid(typename T::second_type::value_type).name());
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
+
+    {
+        test_fixture_t testFixture{2};
+        test_executor_t executor1, executor2;
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+        auto l_value = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type());
+        auto sut = test_fixture_t::move_if_moveonly(l_value).then(
+            std::ref(wrappedExecutor2), testFixture.value_type_to_value_type());
+        wrappedExecutor1.batch();
+        wrappedExecutor2.batch();
+
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_LE(1, wrappedExecutor2.counter());
+    }
+    {
+        test_fixture_t testFixture{2};
+        test_executor_t executor1, executor2;
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+        auto l_value = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type());
+        auto sut = test_fixture_t::move_if_moveonly(l_value) |
+                   (executor{std::ref(wrappedExecutor2)} & testFixture.value_type_to_value_type());
+        wrappedExecutor1.batch();
+        wrappedExecutor2.batch();
+
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_LE(1, wrappedExecutor2.counter());
     }
 }
 
-BOOST_AUTO_TEST_CASE(future_void_two_tasks_with_different_scheduler) {
-    BOOST_TEST_MESSAGE("running future void two tasks with different schedulers");
+#if 0
 
-    {
-        atomic_int p{0};
-
-        sut = async(make_executor<0>(), [& _p = p] {
-                  _p = 42;
-              }).then(make_executor<1>(), [& _p = p] { _p += 42; });
-        check_valid_future(sut);
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        atomic_int p{0};
-
-        sut = async(make_executor<0>(), [& _p = p] { _p = 42; }) |
-              (executor{make_executor<1>()} & [& _p = p] { _p += 42; });
-
-        check_valid_future(sut);
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, p);
-        BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
-    }
-}
 
 /*
         f1
@@ -1563,3 +1549,4 @@ BOOST_AUTO_TEST_CASE(reduction_future_move_only_to_move_only_when_inner_future_f
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif

@@ -20,6 +20,8 @@
 using namespace stlab;
 using namespace future_test_helper;
 
+#if 0
+
 BOOST_FIXTURE_TEST_SUITE(future_when_all_args_int, test_fixture<int>)
 BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_one_element) {
     BOOST_TEST_MESSAGE("running future when_all int with one element");
@@ -340,3 +342,4 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_with_different_types_all_failing) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif

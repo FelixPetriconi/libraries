@@ -18,17 +18,25 @@ namespace stlab {
 inline namespace v1 {
 /**************************************************************************************************/
 
+class avoid_ {};
+
+template <typename T>
+using avoid = std::conditional_t<std::is_same<void, T>::value, avoid_, T>;
+
+/**************************************************************************************************/
+
 template <bool...>
 struct bool_pack;
 template <bool... v>
 using all_true = std::is_same<bool_pack<true, v...>, bool_pack<v..., true>>;
 
+
 /**************************************************************************************************/
 
-template<template<typename> class test, typename T>
+template <template <typename> class test, typename T>
 struct smart_test : test<T> {};
 
-template<typename T>
+template <typename T>
 using smart_is_copy_constructible = smart_test<std::is_copy_constructible, T>;
 
 template <typename T>
@@ -89,8 +97,101 @@ template <template <class...> class Op, class... Args>
 using detected_t = typename detector<nonesuch, void, Op, Args...>::type;
 
 /**************************************************************************************************/
+/**************************************************************************************************/
 
-} // namespace v1
+// Static if original implementation by Vittorio Romero
+// Original implementation is here:
+// https://github.com/SuperV1234/meetingcpp2015/blob/master/1_StaticIf/p2.cpp
+
+template <bool TX>
+using bool_ = std::integral_constant<bool, TX>;
+
+template <bool TX>
+constexpr bool_<TX> bool_v{};
+
+template <typename TPredicate>
+auto static_if(TPredicate) noexcept;
+
+namespace detail {
+
+template <typename TFunctionToCall>
+struct static_if_result;
+
+template <bool TPredicateResult>
+struct static_if_impl;
+
+template <>
+struct static_if_impl<false> {
+    template <typename TF>
+    auto& then_(TF&&) {
+        return *this;
+    }
+
+    template <typename TF>
+    auto else_(TF&& f) noexcept {
+        return static_if_result<TF>(std::forward<TF>(f));
+    }
+
+    template <typename TPredicate>
+    auto else_if_(TPredicate) noexcept {
+        return static_if(TPredicate{});
+    }
+
+    template <typename... Ts>
+    auto operator()(Ts&&...) noexcept {}
+};
+
+template <>
+struct static_if_impl<true> {
+    template <typename TF>
+    auto& else_(TF&&) noexcept {
+        return *this;
+    }
+
+    template <typename TF>
+    auto then_(TF&& f) noexcept {
+        return static_if_result<TF>(std::forward<TF>(f));
+    }
+
+    template <typename TPredicate>
+    auto& else_if_(TPredicate) noexcept {
+        return *this;
+    }
+};
+
+template <typename TFunctionToCall>
+struct static_if_result : TFunctionToCall {
+    template <typename TFFwd>
+    static_if_result(TFFwd&& f) noexcept : TFunctionToCall(std::forward<TFFwd>(f)) {}
+
+    template <typename TF>
+    auto& else_(TF&&) noexcept {
+        return *this;
+    }
+
+    template <typename TF>
+    auto& then_(TF&&) noexcept {
+        return *this;
+    }
+
+    template <typename TPredicate>
+    auto& else_if_(TPredicate) noexcept {
+        return *this;
+    }
+
+    // Using `operator()` will call the base `TFunctionToCall::operator()`.
+};
+
+} // namespace detail
+
+
+template <typename TPredicate>
+auto static_if(TPredicate) noexcept {
+  return detail::static_if_impl < TPredicate{} > {};
+} 
+
+
+}// namespace v1
 
 /**************************************************************************************************/
 

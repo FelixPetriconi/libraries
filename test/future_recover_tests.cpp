@@ -6,6 +6,7 @@
 
 /**************************************************************************************************/
 
+#include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <stlab/concurrency/default_executor.hpp>
@@ -20,100 +21,225 @@ using namespace std;
 using namespace stlab;
 using namespace future_test_helper;
 
-// ----------------------------------------------------------------------------
-//                                  void
-// ----------------------------------------------------------------------------
+using test_configuration = boost::mpl::list<
+    std::pair<detail::immediate_executor_type, future_test_helper::copyable_test_fixture>,
+    std::pair<detail::immediate_executor_type, future_test_helper::moveonly_test_fixture>,
+    std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>>;
 
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    future_recover_failure_before_recover_initialized_with_same_executor_on_rvalue,
+    T,
+    test_configuration) {
+    BOOST_TEST_MESSAGE(
+        "running future recover, failure before recover initialized with same executor on r-value"
+        << typeid(typename T::second_type::value_type).name());
 
-BOOST_FIXTURE_TEST_SUITE(future_recover_void, test_fixture<void>)
-BOOST_AUTO_TEST_CASE(future_recover_failure_before_recover_initialized_on_rvalue) {
-    BOOST_TEST_MESSAGE("running future recover, failure before recover initialized on r-value");
-    
-    /* 
-    combining the tests as in future_then_tests is not possible because of a bug in gcc
-    
-    using task_t = function<void(future<void>)>;
-    using op_t = future<void>(future<void>::*)(task_t&&)&&;
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
 
-    op_t ops[] = {static_cast<op_t>(&future<void>::recover<task_t>),
-                  static_cast<op_t>(&future<void>::operator^<task_t>)};
+    using task_t = task<value_type(future<value_type>)>;
+    using op_t = future<value_type> (future<value_type>::*)(task_t &&)&&;
 
-    for (const auto& op : ops)
-    */
+    op_t ops[] = {static_cast<op_t>(&future<value_type>::template recover<task_t>),
+                  static_cast<op_t>(&future<value_type>::template operator^<task_t>)};
+
+    for (const auto& op : ops) {
+        test_fixture_t testFixture{0};
+        test_executor_t executor;
+
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+
+        auto error_check{false};
+        auto sut = (async(std::ref(wrappedExecutor), testFixture.void_to_value_type_failing()).*
+                    op)([&](future<value_type> failedFuture) {
+            error_check = testFixture.verify_failure(std::move(failedFuture));
+            return testFixture.argument();
+        });
+        wrappedExecutor.batch();
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(2, wrappedExecutor.counter());
+    }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    future_recover_failure_before_recover_initialized_with_same_executor_on_lvalue,
+    T,
+    test_configuration) {
+    BOOST_TEST_MESSAGE(
+        "running future recover, failure before recover initialized with same executor on l-value"
+        << typeid(typename T::second_type::value_type).name());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
+
     {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        sut = async(make_executor<0>(),
-                    [& _error = error]() ->void {
-                        _error = true;
-                        throw test_exception("failure");
-                    })
-            .recover([](future<void> failedFuture) {
-                if (failedFuture.exception()) check_failure<test_exception>(failedFuture, "failure");
+        test_fixture_t testFixture{0};
+        test_executor_t executor;
+
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+
+        auto error_check{false};
+        auto l_value = async(std::ref(wrappedExecutor), testFixture.void_to_value_type_failing());
+        auto sut =
+            test_fixture_t::move_if_moveonly(l_value).recover([&](future<value_type> failedFuture) {
+                error_check = testFixture.verify_failure(std::move(failedFuture));
+                return testFixture.argument();
             });
-        wait_until_future_completed(sut);
+        wrappedExecutor.batch();
 
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_GE(2, custom_scheduler<0>::usage_counter());
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(2, wrappedExecutor.counter());
     }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        sut = (async(make_executor<0>(),
-                     [& _error = error]() ->void {
-                         _error = true;
-                         throw test_exception("failure");
-                     })
-               ^ [](future<void> failedFuture) {
-                    if (failedFuture.exception()) check_failure<test_exception>(failedFuture, "failure");
-                });
-        wait_until_future_completed(sut);
 
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_GE(2, custom_scheduler<0>::usage_counter());
+    {
+        test_fixture_t testFixture{0};
+        test_executor_t executor;
+
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+
+        auto error_check{false};
+        auto l_value = async(std::ref(wrappedExecutor), testFixture.void_to_value_type_failing());
+        auto sut =
+            test_fixture_t::move_if_moveonly(l_value) ^ [&](future<value_type> failedFuture) {
+                error_check = testFixture.verify_failure(std::move(failedFuture));
+                return testFixture.argument();
+            };
+        wrappedExecutor.batch();
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(2, wrappedExecutor.counter());
     }
 }
 
-BOOST_AUTO_TEST_CASE(future_recover_failure_before_recover_initialized_on_lvalue) {
-    BOOST_TEST_MESSAGE("running future recover, failure before recover initialized on l-value");
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    future_recover_failure_before_recover_initialized_with_different_exector_on_rvalue,
+    T,
+    test_configuration) {
+    BOOST_TEST_MESSAGE(
+        "running future recover, failure before recover initialized with different executor on r-value"
+        << typeid(typename T::second_type::value_type).name());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
 
     {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error] {
-            _error = true;
-            throw test_exception("failure");
-        });
+        test_fixture_t testFixture{0};
+        test_executor_t executor1, executor2;
 
-        wait_until_future_fails<test_exception>(interim);
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
 
-        sut = interim.recover(
-            [](auto failedFuture) { check_failure<test_exception>(failedFuture, "failure"); });
+        auto error_check{false};
+        auto sut = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type_failing())
+                       .recover(std::ref(wrappedExecutor2), [&](future<value_type> failedFuture) {
+                           error_check = testFixture.verify_failure(std::move(failedFuture));
+                           return testFixture.argument();
+                       });
 
-        wait_until_future_completed(sut);
+        wrappedExecutor1.batch();
+        wrappedExecutor2.batch();
 
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(2, custom_scheduler<0>::usage_counter());
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_GE(2, wrappedExecutor1.counter());
     }
+
     {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error] {
-            _error = true;
-            throw test_exception("failure");
-        });
+        test_fixture_t testFixture{0};
+        test_executor_t executor1, executor2;
 
-        wait_until_future_fails<test_exception>(interim);
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
 
-        sut = interim ^
-            [](auto failedFuture) { check_failure<test_exception>(failedFuture, "failure"); };
+        auto error_check{false};
+        auto sut = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type_failing()) ^
+                   (executor{std::ref(wrappedExecutor2)} & [&](future<value_type> failedFuture) {
+                       error_check = testFixture.verify_failure(std::move(failedFuture));
+                       return testFixture.argument();
+                   });
 
-        wait_until_future_completed(sut);
+        wrappedExecutor1.batch();
+        wrappedExecutor2.batch();
 
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(2, custom_scheduler<0>::usage_counter());
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_GE(1, wrappedExecutor1.counter());
     }
 }
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    future_recover_failure_before_recover_initialized_with_different_executor_on_lvalue,
+    T,
+    test_configuration) {
+    BOOST_TEST_MESSAGE(
+        "running future recover, failure before recover initialized with different executor on l-value"
+        << typeid(typename T::second_type::value_type).name());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
+
+    {
+        test_fixture_t testFixture{0};
+        test_executor_t executor1, executor2;
+
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+        auto error_check{false};
+        auto l_value = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type_failing());
+        auto sut = test_fixture_t::move_if_moveonly(l_value).recover(
+            std::ref(wrappedExecutor2), [&](future<value_type> failedFuture) {
+                error_check = testFixture.verify_failure(std::move(failedFuture));
+                return testFixture.argument();
+            });
+        wrappedExecutor1.batch();
+        wrappedExecutor2.batch();
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_GE(1, wrappedExecutor2.counter());
+    }
+
+    {
+        test_fixture_t testFixture{0};
+        test_executor_t executor1, executor2;
+
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+        auto error_check{false};
+        auto l_value = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type_failing());
+        auto sut = test_fixture_t::move_if_moveonly(l_value) ^
+                   (executor{std::ref(wrappedExecutor2)} & [&](future<value_type> failedFuture) {
+                       error_check = testFixture.verify_failure(std::move(failedFuture));
+                       return testFixture.argument();
+                   });
+
+        wrappedExecutor1.batch();
+        wrappedExecutor2.batch();
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_GE(1, wrappedExecutor2.counter());
+    }
+}
+
+#if 0
+
+
+
 
 BOOST_AUTO_TEST_CASE(
     future_recover_failure_before_recover_initialized_with_custom_scheduler_on_rvalue) {
@@ -1192,3 +1318,4 @@ BOOST_AUTO_TEST_CASE(future_recover_move_only_with_broken_promise) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#endif

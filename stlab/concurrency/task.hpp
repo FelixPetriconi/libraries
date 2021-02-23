@@ -214,7 +214,7 @@ public:
                    nullptr;
     }
 
-    R operator()(Args... args) { return _vtable_ptr->invoke(&_model, std::forward<Args>(args)...); }
+    R operator()(Args... args) const { return const_cast<task*>(this)->_vtable_ptr->invoke(&(const_cast<task*>(this)->_model), std::forward<Args>(args)...); }
 
     friend inline void swap(task& x, task& y) { return x.swap(y); }
     friend inline bool operator==(const task& x, std::nullptr_t) { return !static_cast<bool>(x); }

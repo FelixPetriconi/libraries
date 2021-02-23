@@ -153,14 +153,26 @@ public:
     move_only(int member) : _member(member) {}
     move_only(const move_only&) = delete;
     move_only& operator=(const move_only&) = delete;
-    move_only(move_only&&) = default;
+    move_only(move_only&&) = default; 
     move_only& operator=(move_only&&) = default;
     virtual ~move_only() = default;
 
     int member() { return _member; }
     int member() const { return _member; }
+
+    friend inline bool operator==(const move_only& lhs, const move_only& rhs) {
+        return lhs._member == rhs._member;
+    }
+
+    friend inline bool operator!=(const move_only& lhs, const move_only& rhs) {
+        return !(lhs == rhs);
+    }
 };
 
+inline std::ostream& boost_test_print_type(std::ostream& ostr, move_only const& right) {
+    ostr << "** value of move_only is " << right.member() << " **";
+    return ostr;
+}
 /**************************************************************************************************/
 
 } // namespace v1

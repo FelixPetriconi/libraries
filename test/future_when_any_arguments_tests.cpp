@@ -19,6 +19,8 @@
 using namespace stlab;
 using namespace future_test_helper;
 
+#if 0
+
 using lock_t = std::unique_lock<std::mutex>;
 
 BOOST_FIXTURE_TEST_SUITE(future_when_any_arg_void, test_fixture<void>)
@@ -449,3 +451,5 @@ BOOST_AUTO_TEST_CASE(future_when_any_move_only_argument_with_one_argument) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif

@@ -22,6 +22,8 @@ using namespace future_test_helper;
 
 using lock_t = std::unique_lock<std::mutex>;
 
+#if 0
+
 BOOST_FIXTURE_TEST_SUITE(future_when_any_range_void, test_fixture<void>)
 BOOST_AUTO_TEST_CASE(future_when_any_void_void_empty_range) {
     BOOST_TEST_MESSAGE("running future when_any void void with empty range");
@@ -644,3 +646,5 @@ BOOST_AUTO_TEST_CASE(future_when_any_move_only_range_with_diamond_formation_elem
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+#endif

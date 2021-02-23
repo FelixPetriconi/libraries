@@ -25,6 +25,7 @@ using namespace future_test_helper;
 
 
 
+
 BOOST_AUTO_TEST_CASE(future_blocking_get_copyable_value) {
   BOOST_TEST_MESSAGE("future blocking_get with copyable value");
   auto answer = [] { return 42; };

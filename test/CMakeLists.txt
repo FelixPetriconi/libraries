@@ -8,10 +8,10 @@ if( NOT ( ${CMAKE_CXX_COMPILER_ID} STREQUAL "MSVC"
     channel_merge_zip_with_tests.cpp
     channel_process_tests.cpp
     channel_test_helper.cpp
+    channel_test_helper.hpp
     channel_tests.cpp
-    tuple_algorithm_test.cpp
     main.cpp
-    channel_test_helper.hpp )
+  )
 
   target_compile_definitions(stlab.test.channel PRIVATE STLAB_UNIT_TEST)
 endif()
@@ -27,8 +27,8 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.executor
-        executor_test.cpp
-        main.cpp)
+    executor_test.cpp
+    main.cpp)
 
 target_compile_definitions(stlab.test.executor PRIVATE STLAB_UNIT_TEST)
 
@@ -42,17 +42,17 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.future
-  future_blocking_get_tests.cpp
-  future_recover_tests.cpp
-  future_test_helper.cpp
-  future_test_helper.hpp
-  future_tests.cpp
-  future_then_tests.cpp
-  future_when_all_arguments_tests.cpp
-  future_when_all_range_tests.cpp
-  future_when_any_arguments_tests.cpp
-  future_when_any_range_tests.cpp
-  main.cpp
+    future_blocking_get_tests.cpp
+    future_recover_tests.cpp
+    future_test_helper.cpp
+    future_test_helper.hpp
+    future_tests.cpp
+    future_then_tests.cpp
+    future_when_all_arguments_tests.cpp
+    future_when_all_range_tests.cpp
+    future_when_any_arguments_tests.cpp
+    future_when_any_range_tests.cpp
+    main.cpp
  )
 
 target_sources( stlab.test.future PUBLIC
@@ -71,7 +71,7 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.serial_queue
-  serial_queue_test.cpp )
+    serial_queue_test.cpp )
 
 target_compile_definitions(stlab.test.serial_queue PRIVATE STLAB_UNIT_TEST)
 
@@ -85,8 +85,8 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.cow
-  cow_test.cpp
-  main.cpp )
+    cow_test.cpp
+    main.cpp )
 
 target_compile_definitions(stlab.test.cow PRIVATE STLAB_UNIT_TEST)
 
@@ -101,8 +101,8 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.task
-  task_test.cpp
-  main.cpp )
+    task_test.cpp
+    main.cpp )
 
 target_compile_definitions(stlab.test.task PRIVATE STLAB_UNIT_TEST)
 
@@ -116,9 +116,9 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.tuple
-  tuple_test.cpp
-  tuple_algorithm_test.cpp
-  main.cpp )
+    tuple_test.cpp
+    tuple_algorithm_test.cpp
+    main.cpp )
 
 target_compile_definitions(stlab.test.tuple PRIVATE STLAB_UNIT_TEST)
 
@@ -132,8 +132,8 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.traits
-        traits_test.cpp
-        main.cpp )
+    traits_test.cpp
+    main.cpp )
 
 target_compile_definitions(stlab.test.traits PRIVATE STLAB_UNIT_TEST)
 
@@ -147,8 +147,8 @@ add_test(
 ################################################################################
 
 add_executable( stlab.test.forest
-        forest_test.cpp
-        main.cpp )
+    forest_test.cpp
+    main.cpp )
 
 target_link_libraries( stlab.test.forest PUBLIC stlab::testing )
 
@@ -163,14 +163,14 @@ add_test(
 # are not dependent upon any such extension.
 #
 set_target_properties(
-  stlab.test.channel
-  stlab.test.future
-  stlab.test.serial_queue
-  stlab.test.cow
-  stlab.test.task
-  stlab.test.tuple
-  stlab.test.traits
-  PROPERTIES CXX_EXTENSIONS OFF )
+    stlab.test.channel
+    stlab.test.future
+    stlab.test.serial_queue
+    stlab.test.cow
+    stlab.test.task
+    stlab.test.tuple
+    stlab.test.traits
+    PROPERTIES CXX_EXTENSIONS OFF )
 
 #
 # Many of the stlab tests are executed using the system executor which defaults
@@ -186,13 +186,13 @@ include(ProcessorCount)
 ProcessorCount(nProcessors)
 
 if(nProcessors)
-  set_tests_properties(
-    stlab.test.channel
-    stlab.test.executor
-    stlab.test.future
-    stlab.test.serial_queue
-    stlab.test.cow
-    stlab.test.task
-    stlab.test.tuple
-    PROPERTIES PROCESSORS ${nProcessors})
+    set_tests_properties(
+        stlab.test.channel
+        stlab.test.executor
+        stlab.test.future
+        stlab.test.serial_queue
+        stlab.test.cow
+        stlab.test.task
+        stlab.test.tuple
+        PROPERTIES PROCESSORS ${nProcessors})
 endif()

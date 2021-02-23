@@ -11,10 +11,13 @@
 
 #include <stlab/concurrency/default_executor.hpp>
 #include <stlab/concurrency/future.hpp>
+#include <stlab/test/model.hpp>
 
 #include <atomic>
 #include <condition_variable>
+#include <deque>
 #include <exception>
+#include <stack>
 #include <string>
 #include <thread>
 
@@ -24,80 +27,286 @@ using lock_t = std::unique_lock<std::mutex>;
 
 namespace future_test_helper {
 
-template <std::size_t no>
-struct custom_scheduler {
-    using result_type = void;
-
-    void operator()(stlab::task<void()> f) const {
-        ++counter();
-        // The implementation on Windows or the mac uses a scheduler that allows many tasks in the
-        // pool in parallel
-#if defined(WIN32) || defined(__APPLE__)
-        stlab::default_executor(std::move(f));
-#else
-        // The default scheduler under Linux allows only as many tasks as there are physical cores.
-        // But this can lead to a dead lock in some of the tests
-        std::thread(std::move(f)).detach();
-#endif
-    }
-
-    static int usage_counter() { return counter().load(); }
-
-    static void reset() {
-        counter() = 0;
-    }
-
-    static std::atomic_int& counter() {
-        static std::atomic_int counter;
-        return counter;
-    }
-
-private:
-    size_t _id = no; // only used for debugging purpose
-};
-
-
-
-template <std::size_t I>
-stlab::executor_t make_executor() {
-    return [_executor = custom_scheduler<I>{}](stlab::task<void()> f) mutable {
-        _executor(std::move(f));
-    };
-}
-
 
 class test_exception : public std::exception {
-    std::string _error;
+  std::string _error;
 
 public:
-    test_exception() {}
+  test_exception() {}
 
-    explicit test_exception(const std::string& error);
+  explicit test_exception(const std::string& error);
 
-    explicit test_exception(const char* error);
+  explicit test_exception(const char* error);
 
-    test_exception& operator=(const test_exception&) = default;
-    test_exception(const test_exception&) = default;
-    test_exception& operator=(test_exception&&) = default;
-    test_exception(test_exception&&) = default;
+  test_exception& operator=(const test_exception&) = default;
+  test_exception(const test_exception&) = default;
+  test_exception& operator=(test_exception&&) = default;
+  test_exception(test_exception&&) = default;
 
-    virtual ~test_exception() {}
+  virtual ~test_exception() {}
 
-    const char* what() const noexcept override;
+  const char* what() const noexcept override;
 };
+
+
+
+struct copyable_test_fixture {
+    using value_type = int;
+
+    std::size_t _expected_operations{};
+
+    value_type _expectation = 42;
+
+    void setup() {}
+
+    void tear_down() {}
+
+    auto argument() const { return _expectation; }
+
+    stlab::task<value_type()> void_to_value_type() const {
+        return [_val = _expectation] { return _val; };
+    }
+
+    stlab::task<value_type()> void_to_value_type_failing() const {
+      return []()->value_type { throw test_exception("failure"); };
+    }
+
+    stlab::task<value_type(value_type)> value_type_to_value_type() const {
+        return [](auto val) { return val; };
+    }
+
+    bool verify_result(stlab::future<value_type> result) const {
+        auto return_value = result.is_ready() && !result.exception() && *result.get_try() == _expectation;
+        return return_value;
+    }
+
+    bool verify_failure(stlab::future<value_type> result) const {
+      auto return_value{ false };
+      try
+      {
+        if (result.exception())
+        {
+          std::rethrow_exception(result.exception());
+        }
+      }
+      catch (const test_exception& ex)
+      {
+        return_value = ex.what() == std::string("failure");
+      }
+      catch (...)
+      {
+      }
+      return return_value;
+    }
+
+    template <typename F>
+    static stlab::task<void(int)> voidContinuation(F&& f) {
+        return [_f = std::forward<F>(f)](int val) { _f(val); };
+    }
+
+    template <typename T>
+    static auto move_if_moveonly(T&& t) {
+        return std::forward<T>(t);
+    }
+};
+
+struct moveonly_test_fixture {
+    using value_type = stlab::move_only;
+
+    std::size_t _expected_operations{};
+
+    value_type _expectation = 42;
+
+    void setup() {}
+
+    void tear_down() {}
+
+    auto argument() const { return value_type{_expectation.member()}; }
+
+    stlab::task<value_type()> void_to_value_type() const {
+        return[_val = _expectation.member()]{ return value_type{_val}; };
+    }
+
+    stlab::task<value_type()> void_to_value_type_failing() const {
+      return []()->value_type { throw test_exception("failure"); };
+    }
+
+    stlab::task<value_type(value_type)> value_type_to_value_type() const {
+        return [](auto val) { return val; };
+    }
+
+    bool verify_result(stlab::future<value_type> result) const {
+        auto return_value = result.is_ready() && !result.exception() &&
+          (*std::move(result).get_try()).member() == _expectation.member();
+        return return_value;
+    }
+
+    bool verify_failure(stlab::future<value_type> result) const {
+      auto return_value{ false };
+      try
+      {
+        if (result.exception())
+        {
+          std::rethrow_exception(result.exception());
+        }
+      }
+      catch (const test_exception& ex)
+      {
+        return_value = ex.what() == std::string("failure");
+      }
+      catch (...)
+      {
+      }
+      return return_value;
+    }
+
+    template <typename F>
+    static stlab::task<void(value_type)> voidContinuation(F&& f) {
+        return {[_f = std::forward<F>(f)](value_type val) mutable { _f(std::move(val)); }};
+    }
+
+
+    template <class T>
+    static constexpr std::remove_reference_t<T>&& move_if_moveonly(T&& t) noexcept {
+        return static_cast<std::remove_reference_t<T>&&>(t);
+    }
+
+
+};
+
+struct void_test_fixture {
+    using value_type = void;
+
+    std::size_t _expected_operations{};
+
+    int _expectation = 42;
+    
+    mutable std::vector<int> _results;
+
+
+    void setup() {}
+
+    void tear_down() {}
+
+    void argument() {}
+
+    stlab::task<value_type()> void_to_value_type() const {
+        return [this] { _results.push_back(_expectation); };
+    }
+
+    stlab::task<value_type(value_type)> value_type_to_value_type() const {
+        return [this] { _results.push_back(_expectation); };
+    }
+
+    stlab::task<value_type()> void_to_value_type_failing() const {
+      return [] { throw test_exception("failure"); };
+    }
+
+    bool verify_result(stlab::future<void> result) const {
+        auto return_value = result.is_ready() && !result.exception() &&
+          _expected_operations == _results.size() &&
+          std::find_if_not(_results.cbegin(), _results.cend(), [this](auto val) {
+          return val == _expectation;
+        }) == _results.cend();
+        return return_value;
+    }
+
+    bool verify_failure(stlab::future<value_type> result) const {
+      auto return_value{ false };
+      try
+      {
+        if (result.exception())
+        {
+          std::rethrow_exception(result.exception());
+        }
+      }
+      catch (const test_exception& ex)
+      {
+        return_value = ex.what() == std::string("failure");
+      }
+      catch (...)
+      {
+      }
+      return return_value;
+    }
+
+    template <typename F>
+    static stlab::task<void()> voidContinuation(F&& f) {
+        return [_f = std::forward<F>(f)]() mutable { _f(); };
+    }
+
+    template <typename T>
+    static auto move_if_moveonly(T&& t) {
+        return std::forward<T>(t);
+    }
+};
+
+template <typename T>
+class executor_wrapper {
+    using queue_t = std::deque<stlab::task<void()>>;
+    T& _executor;
+    std::atomic_size_t _counter{};
+    std::mutex _mutex;
+    queue_t _tasks;
+
+    auto pop_front_unsafe(queue_t& queue) {
+        assert(!queue.empty());
+        auto result = std::move(queue.front());
+        queue.pop_front();
+        return result;
+    }
+
+public:
+    executor_wrapper(T& executor) : _executor(executor) {}
+
+    template <typename U>
+    void operator()(U&& u) {
+        std::unique_lock<std::mutex> guard(_mutex);
+        _tasks.emplace_back(std::forward<U>(u));
+    }
+
+    void step() {
+        stlab::task<void()> task;
+        {
+            std::unique_lock<std::mutex> guard(_mutex);
+            task = pop_front_unsafe(_tasks);
+        }
+        _executor(std::move(task));
+        ++_counter;
+    }
+
+    void batch() {
+        queue_t tmp;
+        {
+            std::unique_lock<std::mutex> guard(_mutex);
+            std::swap(tmp, _tasks);
+        }
+        auto wasFilled = !tmp.empty();
+        while (!tmp.empty()) {
+            auto task = pop_front_unsafe(tmp);
+            _executor(std::move(task));
+            ++_counter;
+        }
+        if (wasFilled) batch();
+    }
+
+    auto counter() const { return _counter.load(); }
+};
+
+
 
 struct test_setup {
     test_setup() {
-        custom_scheduler<0>::reset();
-        custom_scheduler<1>::reset();
+        // custom_scheduler<0>::reset();
+        // custom_scheduler<1>::reset();
     }
 };
 
 template <typename T>
 struct test_fixture {
     test_fixture() : _task_counter{0} {
-        custom_scheduler<0>::reset();
-        custom_scheduler<1>::reset();
+        // custom_scheduler<0>::reset();
+        // custom_scheduler<1>::reset();
     }
 
     ~test_fixture() {}
@@ -196,8 +405,8 @@ class test_functor_base : public P {
     std::atomic_int& _task_counter;
 
 public:
-    test_functor_base(F f, std::atomic_int& task_counter)
-        : _f(std::move(f)), _task_counter(task_counter) {}
+    test_functor_base(F f, std::atomic_int& task_counter) :
+        _f(std::move(f)), _task_counter(task_counter) {}
 
     ~test_functor_base() {}
 
