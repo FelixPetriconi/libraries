@@ -342,4 +342,48 @@ BOOST_AUTO_TEST_CASE(future_when_all_args_with_different_types_all_failing) {
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+
+
+
+
+BOOST_AUTO_TEST_CASE(future_recover_failure_during_when_all_on_lvalue) {
+  BOOST_TEST_MESSAGE("running future recover while failed when_all on l-value");
+
+  {
+    custom_scheduler<0>::reset();
+    int result{ 0 };
+    auto f1 = async(make_executor<0>(), []() -> int { throw test_exception("failure"); });
+    auto f2 = async(make_executor<1>(), [] { return 42; });
+
+    sut = when_all(make_executor<0>(), [](int x, int y) { return x + y; }, f1, f2)
+      .recover([](auto error) {
+      if (error.exception())
+        return 815;
+      else
+        return 0;
+    })
+      .then([&](int x) { result = x; });
+
+    wait_until_future_completed(sut);
+    BOOST_REQUIRE_EQUAL(815, result);
+  }
+  {
+    custom_scheduler<0>::reset();
+    int result{ 0 };
+    auto f1 = async(make_executor<0>(), []() -> int { throw test_exception("failure"); });
+    auto f2 = async(make_executor<1>(), [] { return 42; });
+
+    sut = (when_all(make_executor<0>(), [](int x, int y) { return x + y; }, f1, f2) ^
+      [](auto error) {
+      if (error.exception())
+        return 815;
+      else
+        return 0;
+    }) |
+      [&](int x) { result = x; };
+
+    wait_until_future_completed(sut);
+    BOOST_REQUIRE_EQUAL(815, result);
+  }
+}
 #endif

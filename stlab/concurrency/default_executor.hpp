@@ -12,9 +12,18 @@
 #include <stlab/concurrency/config.hpp>
 #include <stlab/concurrency/task.hpp>
 
+#include <algorithm>
+#include <array>
+#include <atomic>
 #include <cassert>
 #include <chrono>
+#include <condition_variable>
+#include <deque>
 #include <functional>
+#include <memory>
+#include <thread>
+#include <vector>
+
 
 #if STLAB_TASK_SYSTEM(LIBDISPATCH)
 #include <dispatch/dispatch.h>
@@ -26,24 +35,12 @@
 #include <ppapi/cpp/module.h>
 #elif STLAB_TASK_SYSTEM(WINDOWS)
 #include <Windows.h>
-#include <memory>
-#elif STLAB_TASK_SYSTEM(PORTABLE)
-
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <condition_variable>
-#include <deque>
-#include <thread>
-#include <vector>
-
-#include <stlab/concurrency/task.hpp>
-
+#endif
 // REVISIT (sparent) : for testing only
 #if 0 && __APPLE__
 #include <dispatch/dispatch.h>
 #endif
-#endif
+
 
 /**************************************************************************************************/
 
@@ -238,9 +235,11 @@ private:
     }
 };
 
+#endif
+
+
 /**************************************************************************************************/
 
-#elif STLAB_TASK_SYSTEM(PORTABLE)
 
 inline auto queue_size() {
 #ifdef STLAB_UNIT_TEST
@@ -302,7 +301,7 @@ public:
 
 /**************************************************************************************************/
 
-class priority_task_system {
+class portable_task_system {
     using lock_t = std::unique_lock<std::mutex>;
 
     const unsigned _count{queue_size()};
@@ -348,7 +347,7 @@ class priority_task_system {
     }
 
 public:
-    priority_task_system() {
+    portable_task_system() {
         for (auto& q : _q) {
             std::vector<notification_queue> queues{_count};
             std::swap(q, queues);
@@ -361,7 +360,7 @@ public:
         }
     }
 
-    ~priority_task_system() {
+    ~portable_task_system() {
         _done = true;
         for (auto& context : _thread_contexts)
             context._ready.notify_all();
@@ -381,10 +380,21 @@ public:
 
         _q[P][i % _count].push(std::forward<F>(f));
     }
+
+    template <typename F>
+    void operator()(F&& f) {
+        execute<static_cast<std::size_t>(executor_priority::medium)>(std::forward<F>(f));
+    }
 };
 
-inline priority_task_system& pts() {
-    static priority_task_system only_task_system;
+
+/**************************************************************************************************/
+
+
+#if STLAB_TASK_SYSTEM(PORTABLE)
+
+inline portable_task_system& pts() {
+    static portable_task_system only_task_system;
     return only_task_system;
 }
 

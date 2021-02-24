@@ -26,8 +26,7 @@ using test_configuration = boost::mpl::list<
     std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>>;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_single_task, T, test_configuration) {
-    BOOST_TEST_MESSAGE("running future single task"
-                       << typeid(typename T::second_type::value_type).name());
+    BOOST_TEST_MESSAGE("running future single task" << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -43,11 +42,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_single_task, T, test_configuration) {
     BOOST_REQUIRE_LE(1, wrappedExecutor.counter());
 }
 
+
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_same_executor_then_on_rvalue,
                               T,
                               test_configuration) {
-    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on r-value"
-                       << typeid(typename T::second_type::value_type).name());
+    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on r-value" << type_to_string<T>());
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
     using value_type = typename test_fixture_t::value_type;
@@ -72,11 +72,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_same_executor_then_on
     }
 }
 
+
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_with_same_executor_then_on_lvalue,
                               T,
                               test_configuration) {
-    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on l-value"
-                       << typeid(typename T::second_type::value_type).name());
+    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on l-value" << type_to_string<T>());
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
     using value_type = typename test_fixture_t::value_type;
@@ -109,11 +110,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_with_same_executor_then_
     }
 }
 
+
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_then_on_rvalue,
                               T,
                               test_configuration) {
-    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on r-value"
-                       << typeid(typename T::second_type::value_type).name());
+    BOOST_TEST_MESSAGE("future value_type to void on same executor, then on r-value" << type_to_string<T>());
+
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
     using value_type = typename test_fixture_t::value_type;
@@ -151,11 +154,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_th
     }
 }
 
+
+
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_then_on_lvalue,
                               T,
                               test_configuration) {
-    BOOST_TEST_MESSAGE("future value_type to void on different executor, then on l-value"
-                       << typeid(typename T::second_type::value_type).name());
+    BOOST_TEST_MESSAGE("future value_type to void on different executor, then on l-value" << type_to_string<T>());
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
     using value_type = typename test_fixture_t::value_type;

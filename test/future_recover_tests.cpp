@@ -13,8 +13,6 @@
 #include <stlab/concurrency/future.hpp>
 #include <stlab/concurrency/utility.hpp>
 
-#include <stlab/test/model.hpp>
-
 #include "future_test_helper.hpp"
 
 using namespace std;
@@ -27,12 +25,11 @@ using test_configuration = boost::mpl::list<
     std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>>;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(
-    future_recover_failure_before_recover_initialized_with_same_executor_on_rvalue,
+    future_recover_failure_after_recover_initialized_with_same_executor_on_rvalue,
     T,
     test_configuration) {
     BOOST_TEST_MESSAGE(
-        "running future recover, failure before recover initialized with same executor on r-value"
-        << typeid(typename T::second_type::value_type).name());
+        "running future recover, failure after recover initialized with same executor on r-value" << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -65,12 +62,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(
-    future_recover_failure_before_recover_initialized_with_same_executor_on_lvalue,
+    future_recover_failure_after_recover_initialized_with_same_executor_on_lvalue,
     T,
     test_configuration) {
     BOOST_TEST_MESSAGE(
-        "running future recover, failure before recover initialized with same executor on l-value"
-        << typeid(typename T::second_type::value_type).name());
+        "running future recover, failure after recover initialized with same executor on l-value" << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -118,12 +114,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(
-    future_recover_failure_before_recover_initialized_with_different_exector_on_rvalue,
+    future_recover_failure_after_recover_initialized_with_different_exector_on_rvalue,
     T,
     test_configuration) {
     BOOST_TEST_MESSAGE(
-        "running future recover, failure before recover initialized with different executor on r-value"
-        << typeid(typename T::second_type::value_type).name());
+        "running future recover, failure after recover initialized with different executor on r-value" << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -148,7 +143,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
 
         BOOST_REQUIRE(error_check);
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
-        BOOST_REQUIRE_GE(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
         BOOST_REQUIRE_GE(2, wrappedExecutor1.counter());
     }
 
@@ -177,12 +172,11 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(
-    future_recover_failure_before_recover_initialized_with_different_executor_on_lvalue,
+    future_recover_failure_after_recover_initialized_with_different_executor_on_lvalue,
     T,
     test_configuration) {
     BOOST_TEST_MESSAGE(
-        "running future recover, failure before recover initialized with different executor on l-value"
-        << typeid(typename T::second_type::value_type).name());
+        "running future recover, failure after recover initialized with different executor on l-value" << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -236,787 +230,365 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
     }
 }
 
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_with_same_executor,
+                              T,
+                              test_configuration) {
+    BOOST_TEST_MESSAGE(
+        "running future recover, failure before recover initialized with same executor" << type_to_string<T>());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
+
+    {
+        test_fixture_t testFixture{0};
+        test_executor_t executor;
+
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+
+        auto error_check{false};
+        auto interim = async(std::ref(wrappedExecutor), testFixture.void_to_value_type_failing());
+        wrappedExecutor.batch();
+
+        wait_until_future_fails<test_exception>(interim);
+
+        auto sut = test_fixture_t::move_if_moveonly(interim).recover([&](future<value_type> failedFuture) {
+                error_check = testFixture.verify_failure(std::move(failedFuture));
+                return testFixture.argument();
+            });
+
+        wrappedExecutor.batch();
+        wait_until_future_ready(sut);
+
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(2, wrappedExecutor.counter());
+    }
+    {
+      test_fixture_t testFixture{ 0 };
+      test_executor_t executor;
+
+      executor_wrapper<test_executor_t> wrappedExecutor{ executor };
+
+      auto error_check{ false };
+      auto interim = async(std::ref(wrappedExecutor), testFixture.void_to_value_type_failing());
+      wrappedExecutor.batch();
+
+      wait_until_future_fails<test_exception>(interim);
+
+      auto sut = test_fixture_t::move_if_moveonly(interim) ^ [&](future<value_type> failedFuture) {
+        error_check = testFixture.verify_failure(std::move(failedFuture));
+        return testFixture.argument();
+      };
+
+      wrappedExecutor.batch();
+      wait_until_future_ready(sut);
+
+
+      BOOST_REQUIRE(error_check);
+      BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+      BOOST_REQUIRE_GE(2, wrappedExecutor.counter());
+    }
+}
+
+
+
+using threaded_only_test_configuration = boost::mpl::list<
+  std::pair<detail::portable_task_system, future_test_helper::copyable_test_fixture>,
+  std::pair<detail::portable_task_system, future_test_helper::moveonly_test_fixture>,
+  std::pair<detail::portable_task_system, future_test_helper::void_test_fixture>>;
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_after_recover_initialized_on_rvalue,
+                              T,
+                              threaded_only_test_configuration) {
+    BOOST_TEST_MESSAGE("future recover, failure after recover initialized on rvalue"
+                       << type_to_string<T>());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
+
+    using task_t = task<value_type(future<value_type>)>;
+    using op_t = future<value_type> (future<value_type>::*)(task_t &&)&&;
+
+    op_t ops[] = {static_cast<op_t>(&future<value_type>::template recover<task_t>),
+                  static_cast<op_t>(&future<value_type>::template operator^<task_t>)};
+
+    for (const auto& op : ops) {
+        test_fixture_t testFixture;
+        test_executor_t executor;
+
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+        auto error_check{false};
+        mutex block;
+        future<value_type> sut;
+
+        {
+            lock_t hold(block);
+            sut = (async(std::ref(wrappedExecutor),
+                         [&_block = block]() -> value_type {
+                             lock_t lock(_block);
+                             throw test_exception("failure");
+                         }).*
+                   op)([&](auto failedFuture) {
+                error_check = testFixture.verify_failure(std::move(failedFuture));
+                return testFixture.argument();
+            });
+
+            wrappedExecutor.batch();
+        }
+
+        wait_until_future_ready(sut);
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(2, wrappedExecutor.counter());
+    }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_on_lvalue,
+                              T,
+                              threaded_only_test_configuration) {
+    BOOST_TEST_MESSAGE("future recover, failure before recover initialized on lvalue"
+                       << type_to_string<T>());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
+
+    {
+        test_fixture_t testFixture;
+        test_executor_t executor;
+
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+        auto error_check{false};
+        mutex block;
+        future<value_type> sut;
+
+        {
+            lock_t hold(block);
+            auto lvalue = async(std::ref(wrappedExecutor), [&_block = block]() -> value_type {
+                lock_t lock(_block);
+                throw test_exception("failure");
+            });
+
+            sut = test_fixture_t::move_if_moveonly(lvalue).recover([&](auto failedFuture) {
+                error_check = testFixture.verify_failure(std::move(failedFuture));
+                return testFixture.argument();
+            });
+
+            wrappedExecutor.batch();
+        }
+
+        wait_until_future_ready(sut);
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(2, wrappedExecutor.counter());
+    }
+    {
+        test_fixture_t testFixture;
+        test_executor_t executor;
+
+        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+        auto error_check{false};
+        mutex block;
+        future<value_type> sut;
+
+        {
+            lock_t hold(block);
+            auto lvalue = async(std::ref(wrappedExecutor), [&_block = block]() -> value_type {
+                lock_t lock(_block);
+                throw test_exception("failure");
+            });
+
+            sut = test_fixture_t::move_if_moveonly(lvalue) ^ [&](auto failedFuture) {
+                error_check = testFixture.verify_failure(std::move(failedFuture));
+                return testFixture.argument();
+            };
+
+            wrappedExecutor.batch();
+        }
+
+        wait_until_future_ready(sut);
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_GE(2, wrappedExecutor.counter());
+    }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    future_recover_failure_before_recover_initialized_with_different_executor_on_rvalue,
+    T,
+    threaded_only_test_configuration) {
+    BOOST_TEST_MESSAGE(
+        "future recover, failure before recover initialized with different executor on rvalue"
+        << type_to_string<T>());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
+
+    {
+        test_fixture_t testFixture;
+        test_executor_t executor1, executor2;
+
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+        auto error_check{false};
+        mutex block;
+        future<value_type> sut;
+
+        {
+            lock_t hold(block);
+            sut = async(std::ref(wrappedExecutor1), [&_block = block]() -> value_type {
+                      lock_t lock(_block);
+                      throw test_exception("failure");
+                  }).recover(std::ref(wrappedExecutor2), [&](auto failedFuture) {
+                error_check = testFixture.verify_failure(std::move(failedFuture));
+                return testFixture.argument();
+            });
+
+            wrappedExecutor1.batch();
+            wrappedExecutor2.batch();
+        }
+
+        wait_until_future_ready(sut);
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
+    }
+    {
+        test_fixture_t testFixture;
+        test_executor_t executor1, executor2;
+
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+        auto error_check{false};
+        mutex block;
+        future<value_type> sut;
+
+        {
+            lock_t hold(block);
+            sut = async(std::ref(wrappedExecutor1),
+                        [&_block = block]() -> value_type {
+                            lock_t lock(_block);
+                            throw test_exception("failure");
+                        }) ^
+                  (executor{std::ref(wrappedExecutor2)} & [&](auto failedFuture) {
+                      error_check = testFixture.verify_failure(std::move(failedFuture));
+                      return testFixture.argument();
+                  });
+
+            wrappedExecutor1.batch();
+            wrappedExecutor2.batch();
+        }
+
+        wait_until_future_ready(sut);
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
+    }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(
+    future_recover_failure_before_recover_initialized_with_different_executor_on_lvalue,
+    T,
+    threaded_only_test_configuration) {
+    BOOST_TEST_MESSAGE(
+        "future recover, failure before recover initialized with different executor on lvalue"
+        << type_to_string<T>());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type = typename test_fixture_t::value_type;
+
+    {
+        test_fixture_t testFixture;
+        test_executor_t executor1, executor2;
+
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+        auto error_check{false};
+        mutex block;
+        future<value_type> sut;
+
+        {
+            lock_t hold(block);
+            auto lvalue = async(std::ref(wrappedExecutor1), [&_block = block]() -> value_type {
+                lock_t lock(_block);
+                throw test_exception("failure");
+            });
+
+            sut = test_fixture_t::move_if_moveonly(lvalue).recover(
+                std::ref(wrappedExecutor2), [&](auto failedFuture) {
+                    error_check = testFixture.verify_failure(std::move(failedFuture));
+                    return testFixture.argument();
+                });
+
+            wrappedExecutor1.batch();
+            wrappedExecutor2.batch();
+        }
+
+        wait_until_future_ready(sut);
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
+    }
+    {
+        test_fixture_t testFixture;
+        test_executor_t executor1, executor2;
+
+        executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+        executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+        auto error_check{false};
+        mutex block;
+        future<value_type> sut;
+
+        {
+            lock_t hold(block);
+            auto lvalue = async(std::ref(wrappedExecutor1), [&_block = block]() -> value_type {
+                lock_t lock(_block);
+                throw test_exception("failure");
+            });
+
+            sut = test_fixture_t::move_if_moveonly(lvalue) ^
+                  (executor{std::ref(wrappedExecutor2)} & [&](auto failedFuture) {
+                      error_check = testFixture.verify_failure(std::move(failedFuture));
+                      return testFixture.argument();
+                  });
+
+            wrappedExecutor1.batch();
+            wrappedExecutor2.batch();
+        }
+
+        wait_until_future_ready(sut);
+
+        BOOST_REQUIRE(error_check);
+        BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
+        BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
+    }
+}
+
 #if 0
 
 
 
 
-BOOST_AUTO_TEST_CASE(
-    future_recover_failure_before_recover_initialized_with_custom_scheduler_on_rvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future recover, failure before recover initialized, with custom scheduler on r-value");
-
-    {
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error] {
-                        _error = true;
-                        throw test_exception("failure");
-                    })
-            .recover(make_executor<1>(), [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-            });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error] {
-                        _error = true;
-                        throw test_exception("failure");
-                    }) ^
-              (executor{make_executor<1>()} &
-               [](auto failedFuture) { check_failure<test_exception>(failedFuture, "failure"); });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_failure_before_recover_initialized_with_custom_scheduler_on_lvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future recover, failure before recover initialized, with custom scheduler on l-value");
-
-    {
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error] {
-            _error = true;
-            throw test_exception("failure");
-        });
-
-        wait_until_future_fails<test_exception>(interim);
-
-        sut = interim.recover(make_executor<1>(), [](auto failedFuture) {
-            check_failure<test_exception>(failedFuture, "failure");
-        });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error] {
-            _error = true;
-            throw test_exception("failure");
-        });
-
-        wait_until_future_fails<test_exception>(interim);
-
-        sut = interim ^ ( executor{make_executor<1>()} & [](auto failedFuture) {
-                  check_failure<test_exception>(failedFuture, "failure");
-              });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(future_recover_failure_after_recover_initialized_on_rvalue) {
-    BOOST_TEST_MESSAGE("running future recover, failure after recover initialized on r-value");
-
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block] {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        })
-                .recover([](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_GE(2, custom_scheduler<0>::usage_counter());
-    }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error] {
-            _error = true;
-            throw test_exception("failure");
-        });
-
-        wait_until_future_fails<test_exception>(interim);
-
-        sut = interim ^
-            [](auto failedFuture) { check_failure<test_exception>(failedFuture, "failure"); };
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(2, custom_scheduler<0>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(future_recover_failure_after_recover_initialized_on_lvalue) {
-    BOOST_TEST_MESSAGE("running future recover, failure after recover initialized on l-value");
-
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            auto interim = async(make_executor<0>(), [& _error = error, &_block = block] {
-                lock_t lock(_block);
-                _error = true;
-                throw test_exception("failure");
-            });
-
-            sut = interim.recover(
-                [](auto failedFuture) { check_failure<test_exception>(failedFuture, "failure"); });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_GE(2, custom_scheduler<0>::usage_counter());
-    }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            auto interim = async(make_executor<0>(), [& _error = error, &_block = block] {
-                lock_t lock(_block);
-                _error = true;
-                throw test_exception("failure");
-            });
-
-            sut = interim ^
-                [](auto failedFuture) { check_failure<test_exception>(failedFuture, "failure"); };
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_GE(2, custom_scheduler<0>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_failure_after_recover_initialized_with_custom_scheduler_on_rvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future recover, failure after recover initialized with custom scheduler on r-value");
-
-    {
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block] {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        })
-                .recover(make_executor<1>(), [](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block] {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        }) ^
-                  (executor{make_executor<1>()} & [](auto failedFuture) {
-                      check_failure<test_exception>(failedFuture, "failure");
-                  });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_failure_after_recover_initialized_with_custom_scheduler_on_lvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future recover, failure after recover initialized with custom scheduler on l-value");
-
-    {
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            auto interim = async(make_executor<0>(), [& _error = error, &_block = block] {
-                lock_t lock(_block);
-                _error = true;
-                throw test_exception("failure");
-            });
-
-            sut = interim.recover(make_executor<1>(), [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-            });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            auto interim = async(make_executor<0>(), [& _error = error, &_block = block] {
-                lock_t lock(_block);
-                _error = true;
-                throw test_exception("failure");
-            });
-
-            sut = interim ^ ( executor{make_executor<1>()} & [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-            });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(future_recover_failure_during_when_all_on_lvalue) {
-    BOOST_TEST_MESSAGE("running future recover while failed when_all on l-value");
-
-    {
-        custom_scheduler<0>::reset();
-        int result{0};
-        auto f1 = async(make_executor<0>(), []() -> int { throw test_exception("failure"); });
-        auto f2 = async(make_executor<1>(), [] { return 42; });
-
-        sut = when_all(make_executor<0>(), [](int x, int y) { return x + y; }, f1, f2)
-            .recover([](auto error) {
-                if (error.exception())
-                    return 815;
-                else
-                    return 0;
-            })
-            .then([&](int x) { result = x; });
-
-        wait_until_future_completed(sut);
-        BOOST_REQUIRE_EQUAL(815, result);
-    }
-    {
-        custom_scheduler<0>::reset();
-        int result{0};
-        auto f1 = async(make_executor<0>(), []() -> int { throw test_exception("failure"); });
-        auto f2 = async(make_executor<1>(), [] { return 42; });
-
-        sut = (when_all(make_executor<0>(), [](int x, int y) { return x + y; }, f1, f2) ^
-                  [](auto error) {
-                      if (error.exception())
-                          return 815;
-                      else
-                          return 0;
-                  }) |
-              [&](int x) { result = x; };
-
-        wait_until_future_completed(sut);
-        BOOST_REQUIRE_EQUAL(815, result);
-    }
-}
-BOOST_AUTO_TEST_SUITE_END()
-
-// ----------------------------------------------------------------------------
-//                             Copyable Values
-// ----------------------------------------------------------------------------
-
-
-BOOST_FIXTURE_TEST_SUITE(future_recover_int, test_fixture<int>)
-BOOST_AUTO_TEST_CASE(
-    future_recover_int_simple_recover_failure_before_recover_initialized_on_rvalue) {
-    BOOST_TEST_MESSAGE("running future int recover, failure before recover initialized on r-value");
-
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error]() -> int {
-                        _error = true;
-                        throw test_exception("failure");
-                    })
-                  .recover([](auto failedFuture) {
-                      check_failure<test_exception>(failedFuture, "failure");
-                      return 42;
-                  });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-    }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error]() -> int {
-                        _error = true;
-                        throw test_exception("failure");
-                    })
-            ^ [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return 42;
-            };
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_int_simple_recover_failure_before_recover_initialized_on_lvalue) {
-    BOOST_TEST_MESSAGE("running future int recover, failure before recover initialized on l-value");
-
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error]() -> int {
-            _error = true;
-            throw test_exception("failure");
-        });
-
-        sut = interim.recover([](auto failedFuture) {
-            check_failure<test_exception>(failedFuture, "failure");
-            return 42;
-        });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-    }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error]() -> int {
-            _error = true;
-            throw test_exception("failure");
-        });
-
-        sut = interim ^ [](auto failedFuture) {
-            check_failure<test_exception>(failedFuture, "failure");
-            return 42;
-        };
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_int_simple_recover_failure_after_recover_initialized_on_rvalue) {
-    BOOST_TEST_MESSAGE("running future int recover, failure after recover initialized on r-value");
-
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block]() -> int {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        })
-                .recover([](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                    return 42;
-                });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-    }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block]() -> int {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        })
-                ^ [](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                    return 42;
-                };
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_int_simple_recover_failure_after_recover_initialized_on_lvalue) {
-    BOOST_TEST_MESSAGE("running future int recover, failure after recover initialized on l-value");
-
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-
-            auto interim = async(make_executor<0>(), [& _error = error, &_block = block]() -> int {
-                lock_t lock(_block);
-                _error = true;
-                throw test_exception("failure");
-            });
-
-            sut = interim.recover([](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return 42;
-            });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-    }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-
-            auto interim = async(make_executor<0>(), [& _error = error, &_block = block]() -> int {
-                lock_t lock(_block);
-                _error = true;
-                throw test_exception("failure");
-            });
-
-            sut = interim ^ [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return 42;
-            };
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_int_simple_recover_failure_before_recover_initialized_with_custom_scheduler_on_rvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future int recover, failure before recover initialized with custom scheduler on r-value");
-
-    {
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error]() -> int {
-                        _error = true;
-                        throw test_exception("failure");
-                    })
-            .recover(make_executor<1>(), [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return 42;
-            });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error]() -> int {
-                        _error = true;
-                        throw test_exception("failure");
-                    }) ^
-            ( executor{make_executor<1>()} & [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return 42;
-            });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_int_simple_recover_failure_before_recover_initialized_with_custom_scheduler_on_lvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future int recover, failure before recover initialized with custom scheduler on l-value");
-
-    {
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error]() -> int {
-            _error = true;
-            throw test_exception("failure");
-        });
-
-        wait_until_future_fails<test_exception>(interim);
-
-        sut = interim.recover(make_executor<1>(), [](auto failedFuture) {
-            check_failure<test_exception>(failedFuture, "failure");
-            return 42;
-        });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-        auto interim = async(make_executor<0>(), [& _error = error]() -> int {
-            _error = true;
-            throw test_exception("failure");
-        });
-
-        wait_until_future_fails<test_exception>(interim);
-
-        sut = interim ^ ( executor{make_executor<1>()} & [](auto failedFuture) {
-            check_failure<test_exception>(failedFuture, "failure");
-            return 42;
-        });
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<1>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_int_simple_recover_failure_after_recover_initialized_with_custom_scheduler_on_rvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future int recover, failure after recover initialized with custom scheduler on r-value");
-
-    {
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block]() -> int {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        })
-                .recover(make_executor<1>(), [](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                    return 42;
-                });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block]() -> int {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        }) ^ ( executor{make_executor<1>()} & [](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                    return 42;
-                });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_int_simple_recover_failure_after_recover_initialized_with_custom_scheduler_on_lvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future int recover, failure after recover initialized with custom scheduler on l-value");
-
-    {
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            auto interim = async(make_executor<0>(), [& _error = error, &_block = block]() -> int {
-                lock_t lock(_block);
-                _error = true;
-                throw test_exception("failure");
-            });
-
-            sut = interim.recover(make_executor<1>(), [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return 42;
-            });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-        mutex block;
-
-        {
-            lock_t hold(block);
-            auto interim = async(make_executor<0>(), [& _error = error, &_block = block]() -> int {
-                lock_t lock(_block);
-                _error = true;
-                throw test_exception("failure");
-            });
-
-            sut = interim ^ (executor{make_executor<1>()} & [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return 42;
-            });
-        }
-
-        wait_until_future_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, *sut.get_try());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-}
 
 
 BOOST_AUTO_TEST_CASE(future_recover_int_with_broken_promise) {
@@ -1062,219 +634,7 @@ BOOST_AUTO_TEST_CASE(future_recover_int_with_broken_promise) {
 
 BOOST_AUTO_TEST_SUITE_END()
 
-// ----------------------------------------------------------------------------
-//                             Move-only values
-// ----------------------------------------------------------------------------
 
-BOOST_FIXTURE_TEST_SUITE(future_recover_move_only_type, test_fixture<move_only>)
-BOOST_AUTO_TEST_CASE(
-    future_recover_move_only_type_recover_failure_before_recover_initialized_on_rvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future move only type recover, failure before recover initialized on r-value");
-
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error]() -> move_only {
-                        _error = true;
-                        throw test_exception("failure");
-                    })
-            .recover([](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return move_only(42);
-            });
-
-        auto result = wait_until_future_r_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, result->member());
-        BOOST_REQUIRE(error);
-    }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                     [& _error = error]() -> move_only {
-                         _error = true;
-                         throw test_exception("failure");
-                     })
-               ^ [](auto failedFuture) {
-            check_failure<test_exception>(failedFuture, "failure");
-            return move_only(42);
-        };
-
-        auto result = wait_until_future_r_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, result->member());
-        BOOST_REQUIRE(error);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(future_recover_move_only_types_recover_failure_after_recover_initialized) {
-    BOOST_TEST_MESSAGE("running future move only type recover, failure after recover initialized");
-
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-        {
-            lock_t hold(block);
-
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block]() -> move_only {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        })
-                .recover([](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                    return move_only(42);
-                });
-        }
-
-        auto result = wait_until_future_r_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, result->member());
-        BOOST_REQUIRE(error);
-    }
-    {
-        custom_scheduler<0>::reset();
-        auto error = false;
-        mutex block;
-        {
-            lock_t hold(block);
-
-            sut = async(make_executor<0>(),
-                         [& _error = error, &_block = block]() -> move_only {
-                             lock_t lock(_block);
-                             _error = true;
-                             throw test_exception("failure");
-                         })
-                   ^ [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return move_only(42);
-            };
-        }
-
-        auto result = wait_until_future_r_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, result->member());
-        BOOST_REQUIRE(error);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_move_only_type_recover_failure_before_recover_initialized_with_custom_scheduler_on_rvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future move only type recover, failure before recover initialized with custom scheduler on r-value");
-
-    {
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error]() -> move_only {
-                        _error = true;
-                        throw test_exception("failure");
-                    })
-            .recover(make_executor<1>(), [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return move_only(42);
-            });
-
-        auto result = wait_until_future_r_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, result->member());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-
-        sut = async(make_executor<0>(),
-                    [& _error = error]() -> move_only {
-                        _error = true;
-                        throw test_exception("failure");
-                    }) ^
-            ( executor{make_executor<1>()} & [](auto failedFuture) {
-                check_failure<test_exception>(failedFuture, "failure");
-                return move_only(42);
-            });
-
-        auto result = wait_until_future_r_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, result->member());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-}
-
-BOOST_AUTO_TEST_CASE(
-    future_recover_move_only_types_recover_failure_after_recover_initialized_with_custom_scheduler_on_rvalue) {
-    BOOST_TEST_MESSAGE(
-        "running future move only type recover, failure after recover initialized with custom scheduler on r-value");
-
-    {
-        auto error = false;
-        mutex block;
-        {
-            lock_t hold(block);
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block]() -> move_only {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        })
-                .recover(make_executor<1>(), [](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                    return move_only(42);
-                });
-        }
-
-        auto result = wait_until_future_r_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, result->member());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-    custom_scheduler<0>::reset();
-    custom_scheduler<1>::reset();
-
-    {
-        auto error = false;
-        mutex block;
-        {
-            lock_t hold(block);
-            sut = async(make_executor<0>(),
-                        [& _error = error, &_block = block]() -> move_only {
-                            lock_t lock(_block);
-                            _error = true;
-                            throw test_exception("failure");
-                        }) ^
-                ( executor{make_executor<1>()} & [](auto failedFuture) {
-                    check_failure<test_exception>(failedFuture, "failure");
-                    return move_only(42);
-                });
-        }
-
-        auto result = wait_until_future_r_completed(sut);
-
-        BOOST_REQUIRE_EQUAL(42, result->member());
-        BOOST_REQUIRE(error);
-        BOOST_REQUIRE_EQUAL(1, custom_scheduler<0>::usage_counter());
-        BOOST_REQUIRE_GE(1, custom_scheduler<1>::usage_counter());
-    }
-
-}
 
 BOOST_AUTO_TEST_CASE(future_recover_move_only_with_broken_promise) {
     BOOST_TEST_MESSAGE("running future move-only recover with broken promise");

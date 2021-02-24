@@ -236,11 +236,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_default_constructed, T, all_test_types) {
 using test_configuration = boost::mpl::list<
     std::pair<detail::immediate_executor_type, future_test_helper::copyable_test_fixture>,
     std::pair<detail::immediate_executor_type, future_test_helper::moveonly_test_fixture>,
-    std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>>;
+    std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>,
+    std::pair<detail::portable_task_system, future_test_helper::copyable_test_fixture>,
+    std::pair<detail::portable_task_system, future_test_helper::moveonly_test_fixture>,
+    std::pair<detail::portable_task_system, future_test_helper::void_test_fixture>>;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_constructed_minimal_fn, T, test_configuration) {
-    BOOST_TEST_MESSAGE("running future with minimal "
-                       << typeid(typename T::second_type::value_type).name());
+  BOOST_TEST_MESSAGE("running future with minimal" << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -266,7 +268,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_constructed_minimal_fn, T, test_configurati
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(running_future_with_passed_argument, T, test_configuration) {
     BOOST_TEST_MESSAGE("running future with passed argument "
-                       << typeid(typename T::second_type::value_type).name());
+                       << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -290,6 +292,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(running_future_with_passed_argument, T, test_confi
                             testFixture.argument());
             })(std::ignore);
 
+        wait_until_future_ready(sut);
+
         BOOST_REQUIRE(sut.valid() == true);
         BOOST_REQUIRE(!sut.exception());
 
@@ -301,8 +305,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(running_future_with_passed_argument, T, test_confi
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_without_execution, T, test_configuration) {
-    BOOST_TEST_MESSAGE("future detach without execution "
-                       << typeid(typename T::second_type::value_type).name());
+    BOOST_TEST_MESSAGE("future detach without execution " << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -328,14 +331,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_without_execution, T, test_configura
                     .detach();
             })(std::ignore);
     }
-
+    // TODO check should be set to false within future
     BOOST_REQUIRE_EQUAL(1, counter.remaining());
     BOOST_REQUIRE(check);
 }
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_with_execution, T, test_configuration) {
-    BOOST_TEST_MESSAGE("future detach with execution "
-                       << typeid(typename T::second_type::value_type).name());
+    BOOST_TEST_MESSAGE("future detach with execution" << type_to_string<T>());
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -356,6 +358,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_with_execution, T, test_configuratio
                 p.second.then(testFixture.value_type_to_value_type()).detach();
                 p.first();
                 wrappedExecutor.batch();
+                // wait certain time, until check value is set
                 // BOOST_REQUIRE_EQUAL(true, check);
             })
             .else_([&](auto&& p) {

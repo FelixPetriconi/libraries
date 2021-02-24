@@ -27,28 +27,25 @@ using lock_t = std::unique_lock<std::mutex>;
 
 namespace future_test_helper {
 
-
 class test_exception : public std::exception {
-  std::string _error;
+    std::string _error;
 
 public:
-  test_exception() {}
+    test_exception() {}
 
-  explicit test_exception(const std::string& error);
+    explicit test_exception(const std::string& error);
 
-  explicit test_exception(const char* error);
+    explicit test_exception(const char* error);
 
-  test_exception& operator=(const test_exception&) = default;
-  test_exception(const test_exception&) = default;
-  test_exception& operator=(test_exception&&) = default;
-  test_exception(test_exception&&) = default;
+    test_exception& operator=(const test_exception&) = default;
+    test_exception(const test_exception&) = default;
+    test_exception& operator=(test_exception&&) = default;
+    test_exception(test_exception&&) = default;
 
-  virtual ~test_exception() {}
+    virtual ~test_exception() {}
 
-  const char* what() const noexcept override;
+    const char* what() const noexcept override;
 };
-
-
 
 struct copyable_test_fixture {
     using value_type = int;
@@ -68,7 +65,7 @@ struct copyable_test_fixture {
     }
 
     stlab::task<value_type()> void_to_value_type_failing() const {
-      return []()->value_type { throw test_exception("failure"); };
+        return []() -> value_type { throw test_exception("failure"); };
     }
 
     stlab::task<value_type(value_type)> value_type_to_value_type() const {
@@ -76,27 +73,22 @@ struct copyable_test_fixture {
     }
 
     bool verify_result(stlab::future<value_type> result) const {
-        auto return_value = result.is_ready() && !result.exception() && *result.get_try() == _expectation;
+        auto return_value =
+            result.is_ready() && !result.exception() && *result.get_try() == _expectation;
         return return_value;
     }
 
     bool verify_failure(stlab::future<value_type> result) const {
-      auto return_value{ false };
-      try
-      {
-        if (result.exception())
-        {
-          std::rethrow_exception(result.exception());
+        auto return_value{false};
+        try {
+            if (result.exception()) {
+                std::rethrow_exception(result.exception());
+            }
+        } catch (const test_exception& ex) {
+            return_value = ex.what() == std::string("failure");
+        } catch (...) {
         }
-      }
-      catch (const test_exception& ex)
-      {
-        return_value = ex.what() == std::string("failure");
-      }
-      catch (...)
-      {
-      }
-      return return_value;
+        return return_value;
     }
 
     template <typename F>
@@ -124,11 +116,11 @@ struct moveonly_test_fixture {
     auto argument() const { return value_type{_expectation.member()}; }
 
     stlab::task<value_type()> void_to_value_type() const {
-        return[_val = _expectation.member()]{ return value_type{_val}; };
+        return [_val = _expectation.member()] { return value_type{_val}; };
     }
 
     stlab::task<value_type()> void_to_value_type_failing() const {
-      return []()->value_type { throw test_exception("failure"); };
+        return []() -> value_type { throw test_exception("failure"); };
     }
 
     stlab::task<value_type(value_type)> value_type_to_value_type() const {
@@ -137,27 +129,21 @@ struct moveonly_test_fixture {
 
     bool verify_result(stlab::future<value_type> result) const {
         auto return_value = result.is_ready() && !result.exception() &&
-          (*std::move(result).get_try()).member() == _expectation.member();
+                            (*std::move(result).get_try()).member() == _expectation.member();
         return return_value;
     }
 
     bool verify_failure(stlab::future<value_type> result) const {
-      auto return_value{ false };
-      try
-      {
-        if (result.exception())
-        {
-          std::rethrow_exception(result.exception());
+        auto return_value{false};
+        try {
+            if (result.exception()) {
+                std::rethrow_exception(result.exception());
+            }
+        } catch (const test_exception& ex) {
+            return_value = ex.what() == std::string("failure");
+        } catch (...) {
         }
-      }
-      catch (const test_exception& ex)
-      {
-        return_value = ex.what() == std::string("failure");
-      }
-      catch (...)
-      {
-      }
-      return return_value;
+        return return_value;
     }
 
     template <typename F>
@@ -165,13 +151,10 @@ struct moveonly_test_fixture {
         return {[_f = std::forward<F>(f)](value_type val) mutable { _f(std::move(val)); }};
     }
 
-
     template <class T>
     static constexpr std::remove_reference_t<T>&& move_if_moveonly(T&& t) noexcept {
         return static_cast<std::remove_reference_t<T>&&>(t);
     }
-
-
 };
 
 struct void_test_fixture {
@@ -180,9 +163,8 @@ struct void_test_fixture {
     std::size_t _expected_operations{};
 
     int _expectation = 42;
-    
-    mutable std::vector<int> _results;
 
+    mutable std::vector<int> _results;
 
     void setup() {}
 
@@ -199,35 +181,28 @@ struct void_test_fixture {
     }
 
     stlab::task<value_type()> void_to_value_type_failing() const {
-      return [] { throw test_exception("failure"); };
+        return [] { throw test_exception("failure"); };
     }
 
     bool verify_result(stlab::future<void> result) const {
-        auto return_value = result.is_ready() && !result.exception() &&
-          _expected_operations == _results.size() &&
-          std::find_if_not(_results.cbegin(), _results.cend(), [this](auto val) {
-          return val == _expectation;
-        }) == _results.cend();
+        auto return_value =
+            result.is_ready() && !result.exception() && _expected_operations == _results.size() &&
+            std::find_if_not(_results.cbegin(), _results.cend(),
+                             [this](auto val) { return val == _expectation; }) == _results.cend();
         return return_value;
     }
 
     bool verify_failure(stlab::future<value_type> result) const {
-      auto return_value{ false };
-      try
-      {
-        if (result.exception())
-        {
-          std::rethrow_exception(result.exception());
+        auto return_value{false};
+        try {
+            if (result.exception()) {
+                std::rethrow_exception(result.exception());
+            }
+        } catch (const test_exception& ex) {
+            return_value = ex.what() == std::string("failure");
+        } catch (...) {
         }
-      }
-      catch (const test_exception& ex)
-      {
-        return_value = ex.what() == std::string("failure");
-      }
-      catch (...)
-      {
-      }
-      return return_value;
+        return return_value;
     }
 
     template <typename F>
@@ -240,6 +215,14 @@ struct void_test_fixture {
         return std::forward<T>(t);
     }
 };
+
+template <typename T>
+std::string type_to_string() {
+  return std::string(" ") + 
+    typeid(typename T::first_type).name() + " " + 
+      typeid(typename T::second_type::value_type).name();
+    
+}
 
 template <typename T>
 class executor_wrapper {
@@ -293,7 +276,31 @@ public:
     auto counter() const { return _counter.load(); }
 };
 
+namespace impl {
 
+template <typename E, typename F>
+void wait_until_this_future_fails(F& f) {
+    try {
+        while (!f.get_try()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        }
+    } catch (const E&) {
+    }
+}
+
+} // namespace impl
+
+template <typename E, typename... F>
+void wait_until_future_fails(F&... f) {
+    (void)std::initializer_list<int>{(impl::wait_until_this_future_fails<E>(f), 0)...};
+}
+
+template <typename F>
+void wait_until_future_ready(F& f) {
+    while (!f.get_try()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+    }
+}
 
 struct test_setup {
     test_setup() {
@@ -315,7 +322,7 @@ struct test_fixture {
 
     template <typename... F>
     void wait_until_future_completed(F&... f) {
-        (void)std::initializer_list<int>{(wait_until_future_is_ready(f), 0)...};
+        (void)std::initializer_list<int>{(wait_until_future_ready(f), 0)...};
     }
 
     template <typename F>
@@ -349,11 +356,6 @@ struct test_fixture {
                                 }));
     }
 
-    template <typename E, typename... F>
-    void wait_until_future_fails(F&... f) {
-        (void)std::initializer_list<int>{(wait_until_this_future_fails<E>(f), 0)...};
-    }
-
     void wait_until_all_tasks_completed() {
         while (_task_counter.load() != 0) {
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -361,24 +363,6 @@ struct test_fixture {
     }
 
     std::atomic_int _task_counter{0};
-
-private:
-    template <typename F>
-    void wait_until_future_is_ready(F& f) {
-        while (!f.get_try()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
-        }
-    }
-
-    template <typename E, typename F>
-    void wait_until_this_future_fails(F& f) {
-        try {
-            while (!f.get_try()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(1));
-            }
-        } catch (const E&) {
-        }
-    }
 };
 
 struct thread_block_context {
