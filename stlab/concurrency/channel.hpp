@@ -183,6 +183,13 @@ using yield_type = decltype(yield_type_<T, Arg...>(0));
 
 /**************************************************************************************************/
 
+class avoid_ {};
+
+template <typename T>
+using avoid = std::conditional_t<std::is_same<void, T>::value, avoid_, T>;
+
+/**************************************************************************************************/
+
 template <typename F, std::size_t... I, typename... T>
 auto invoke_(F&& f, std::tuple<variant<T, std::exception_ptr>...>& t, std::index_sequence<I...>) {
     return std::forward<F>(f)(std::move(std::get<I>(t))...);
