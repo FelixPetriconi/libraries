@@ -302,6 +302,16 @@ void wait_until_future_ready(F& f) {
     }
 }
 
+
+template <typename E, typename F>
+void check_failure(F& f, const char* message) {
+  BOOST_REQUIRE_EXCEPTION(f.get_try(), E, ([_m = message](const auto& e) {
+    return std::string(_m) == std::string(e.what());
+  }));
+}
+
+
+
 struct test_setup {
     test_setup() {
         // custom_scheduler<0>::reset();
@@ -349,12 +359,7 @@ struct test_fixture {
         check_valid_future(fs...);
     }
 
-    template <typename E, typename F>
-    static void check_failure(F& f, const char* message) {
-        BOOST_REQUIRE_EXCEPTION(f.get_try(), E, ([_m = message](const auto& e) {
-                                    return std::string(_m) == std::string(e.what());
-                                }));
-    }
+
 
     void wait_until_all_tasks_completed() {
         while (_task_counter.load() != 0) {

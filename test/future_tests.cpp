@@ -311,6 +311,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_without_execution, T, test_configura
     using test_fixture_t = typename T::second_type;
     using value_type_t = typename test_fixture_t::value_type;
     using sut_t = stlab::future<value_type_t>;
+
     test_fixture_t testFixture;
     test_executor_t executor;
     executor_wrapper<test_executor_t> wrappedExecutor{executor};

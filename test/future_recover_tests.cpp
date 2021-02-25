@@ -293,6 +293,59 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_
     }
 }
 
+/**************************************************************************************************/
+/******************************** Immediate Executor Only Tests ***********************************/
+/**************************************************************************************************/
+
+using immediate_only_test_configuration = boost::mpl::list<
+    std::pair<detail::immediate_executor_type, future_test_helper::copyable_test_fixture>,
+    std::pair<detail::immediate_executor_type, future_test_helper::moveonly_test_fixture>,
+    std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>>;
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_with_broken_promise, T, test_configuration) {
+    BOOST_TEST_MESSAGE("future recover with broken promise" << type_to_string<T>());
+
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+    using value_type_t = typename test_fixture_t::value_type;
+
+    using task_t = task<value_type_t(future<value_type_t>)>;
+    using op_t = future<value_type_t> (future<value_type_t>::*)(task_t &&)&&;
+
+    op_t ops[] = {static_cast<op_t>(&future<value_type_t>::template recover<task_t>),
+                  static_cast<op_t>(&future<value_type_t>::template operator^<task_t>)};
+
+    for (const auto& op : ops) {
+        test_fixture_t testFixture;
+
+        auto check{false};
+
+        auto sut = [&check, &testFixture]() {
+            auto promise_future = package<value_type_t(value_type_t)>(
+                immediate_executor, testFixture.value_type_to_value_type());
+
+            return test_fixture_t::move_if_moveonly(promise_future.second)
+                .recover([&check](const auto& f) {
+                    check = true;
+                    try {
+                      return static_if(bool_v<std::is_same_v<value_type_t, void>>)
+                        .then_([&](auto&&) { return f.get_try(); })
+                        .else_([&](auto&&) { return *f.get_try(); })(std::ignore);
+
+                    } catch (const exception&) {
+                        throw;
+                    }
+                });
+        }();
+
+        check_failure<future_error>(sut, "broken promise");
+        BOOST_REQUIRE(check);
+    }
+}
+
+/**************************************************************************************************/
+/******************************** Threaded Only Tests *********************************************/
+/**************************************************************************************************/
 
 
 using threaded_only_test_configuration = boost::mpl::list<
@@ -583,99 +636,3 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
         BOOST_REQUIRE_EQUAL(1, wrappedExecutor1.counter());
     }
 }
-
-#if 0
-
-
-
-
-
-
-BOOST_AUTO_TEST_CASE(future_recover_int_with_broken_promise) {
-    BOOST_TEST_MESSAGE("running future int recover with broken promise");
-
-    {
-        auto check{false};
-        sut = [&check]() {
-            auto p{package<int(int)>(immediate_executor, [](int x) { return x; })};
-            return p.second.recover([&check](const auto& f) {
-                check = true;
-                try {
-                    return *f.get_try();
-                } catch (const exception&) {
-                    throw;
-                }
-            });
-        }();
-
-        check_failure<future_error>(sut, "broken promise");
-        BOOST_REQUIRE(check);
-    }
-    {
-        auto check{false};
-        sut = [&check]() {
-            auto p{package<int(int)>(immediate_executor, [](int x) { return x; })};
-            return p.second ^ [&check](const auto& f) {
-                check = true;
-                try {
-                    return *f.get_try();
-                } catch (const exception&) {
-                    throw;
-                }
-            };
-        }();
-
-        check_failure<future_error>(sut, "broken promise");
-        BOOST_REQUIRE(check);
-    }
-}
-
-
-
-BOOST_AUTO_TEST_SUITE_END()
-
-
-
-BOOST_AUTO_TEST_CASE(future_recover_move_only_with_broken_promise) {
-    BOOST_TEST_MESSAGE("running future move-only recover with broken promise");
-
-    {
-        auto check{false};
-        sut = [&check]() {
-            auto p{
-                package<move_only(move_only)>(immediate_executor, [](move_only x) { return x; })};
-            return std::move(p.second).recover([&check](auto f) {
-                check = true;
-                try {
-                    return *std::move(f.get_try());
-                } catch (const exception&) {
-                    throw;
-                }
-            });
-        }();
-
-        check_failure<future_error>(sut, "broken promise");
-        BOOST_REQUIRE(check);
-    }
-    {
-        auto check{false};
-        sut = [&check]() {
-            auto p{
-                package<move_only(move_only)>(immediate_executor, [](move_only x) { return x; })};
-            return std::move(p.second) ^ [&check](auto f) {
-                check = true;
-                try {
-                    return *std::move(f.get_try());
-                } catch (const exception&) {
-                    throw;
-                }
-            };
-        }();
-
-        check_failure<future_error>(sut, "broken promise");
-        BOOST_REQUIRE(check);
-    }
-}
-
-BOOST_AUTO_TEST_SUITE_END()
-#endif
