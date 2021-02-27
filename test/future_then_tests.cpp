@@ -206,10 +206,10 @@ using split_test_copyable_configuration = boost::mpl::list<
   std::pair<detail::immediate_executor_type, future_test_helper::copyable_test_fixture>>;
 
 
-BOOST_AUTO_TEST_CASE_TEMPLATE(future_with_copyable_value_split_with_same_executor_on_rvalue,
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_with_copyable_value_split_with_same_executor,
                               T,
                               split_test_copyable_configuration) {
-    BOOST_TEST_MESSAGE("future with copyable value split with same executor on rvalue"
+    BOOST_TEST_MESSAGE("future with copyable value split with same executor"
                        << type_to_string<T>());
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
@@ -244,6 +244,73 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_with_copyable_value_split_with_same_executo
                                                                         testFixture.argument()));
         BOOST_REQUIRE_LE(3, wrappedExecutor.counter());
     }
+}
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_with_copyable_value_split_with_different_executors,
+  T,
+  split_test_copyable_configuration) {
+  BOOST_TEST_MESSAGE("future with copyable value split with different executors"
+    << type_to_string<T>());
+  using test_executor_t = typename T::first_type;
+  using test_fixture_t = typename T::second_type;
+  using value_type = typename test_fixture_t::value_type;
+
+  {
+    test_fixture_t testFixture;
+    test_fixture_t testFixture1{ 2 };
+    test_fixture_t testFixture2{ 2 };
+
+    test_executor_t executor, executor1, executor2;
+
+    executor_wrapper<test_executor_t> wrappedExecutor{ executor };
+    executor_wrapper<test_executor_t> wrappedExecutor1{ executor1 };
+    executor_wrapper<test_executor_t> wrappedExecutor2{ executor2 };
+
+
+    auto sut = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
+
+    auto f1 = sut.then(std::ref(wrappedExecutor1), testFixture1.combine_value_type_with_my_argument());
+    auto f2 = sut.then(std::ref(wrappedExecutor2), testFixture2.combine_value_type_with_my_argument());
+
+
+    wait_until_future_completed(f1, f2);
+
+    BOOST_REQUIRE(testFixture1.verify_result_with_combined_argument(std::move(f1),
+      testFixture.argument()));
+    BOOST_REQUIRE(testFixture2.verify_result_with_combined_argument(std::move(f2),
+      testFixture.argument()));
+    BOOST_REQUIRE_LE(1, wrappedExecutor.counter());
+    BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
+    BOOST_REQUIRE_LE(1, wrappedExecutor2.counter());
+  }
+  {
+    test_fixture_t testFixture;
+    test_fixture_t testFixture1{ 2 };
+    test_fixture_t testFixture2{ 2 };
+
+    test_executor_t executor, executor1, executor2;
+
+    executor_wrapper<test_executor_t> wrappedExecutor{ executor };
+    executor_wrapper<test_executor_t> wrappedExecutor1{ executor1 };
+    executor_wrapper<test_executor_t> wrappedExecutor2{ executor2 };
+
+
+    auto sut = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
+
+    auto f1 = sut | (stlab::executor{ std::ref(wrappedExecutor1) } & testFixture1.combine_value_type_with_my_argument());
+    auto f2 = sut | (stlab::executor{ std::ref(wrappedExecutor2) } & testFixture2.combine_value_type_with_my_argument());
+
+
+    wait_until_future_completed(f1, f2);
+
+    BOOST_REQUIRE(testFixture1.verify_result_with_combined_argument(std::move(f1),
+      testFixture.argument()));
+    BOOST_REQUIRE(testFixture2.verify_result_with_combined_argument(std::move(f2),
+      testFixture.argument()));
+    BOOST_REQUIRE_LE(1, wrappedExecutor.counter());
+    BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
+    BOOST_REQUIRE_LE(1, wrappedExecutor2.counter());
+  }
 }
 
 
@@ -1009,41 +1076,7 @@ BOOST_AUTO_TEST_CASE(future_int_three_tasks_with_same_scheduler) {
     }
 }
 
-/*
-        f1
-       /
-    sut
-       \
-        f2
-*/
-BOOST_AUTO_TEST_CASE(future_int_Y_formation_tasks_with_same_scheduler) {
-    BOOST_TEST_MESSAGE("running future int Y formation tasks with same scheduler");
 
-    {
-        sut = async(make_executor<0>(), [] { return 42; });
-        auto f1 = sut.then([](auto x) { return x + 42; });
-        auto f2 = sut.then([](auto x) { return x + 4177; });
-
-        check_valid_future(sut, f1, f2);
-        wait_until_future_completed(f1, f2);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, *f1.get_try());
-        BOOST_REQUIRE_EQUAL(42 + 4177, *f2.get_try());
-        BOOST_REQUIRE_LE(3, custom_scheduler<0>::usage_counter());
-    }
-    {
-        sut = async(make_executor<0>(), [] { return 42; });
-        auto f1 = sut | [](auto x) { return x + 42; };
-        auto f2 = sut | [](auto x) { return x + 4177; };
-
-        check_valid_future(sut, f1, f2);
-        wait_until_future_completed(f1, f2);
-
-        BOOST_REQUIRE_EQUAL(42 + 42, *f1.get_try());
-        BOOST_REQUIRE_EQUAL(42 + 4177, *f2.get_try());
-        BOOST_REQUIRE_LE(3, custom_scheduler<0>::usage_counter());
-    }
-}
 
 BOOST_AUTO_TEST_CASE(reduction_future_void_to_int) {
     BOOST_TEST_MESSAGE("running future reduction void to int");

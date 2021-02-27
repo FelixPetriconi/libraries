@@ -308,13 +308,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_with_broken_promise, T, test_config
                   static_cast<op_t>(&future<value_type_t>::template operator^<task_t>)};
 
     for (const auto& op : ops) {
+        test_executor_t executor;
+        executor_wrapper<test_executor_t> wrappedExecutor{ executor };
+
         test_fixture_t testFixture;
 
         auto check{false};
 
-        auto sut = [&check, &testFixture]() {
+        auto sut = [&check, &testFixture, &wrappedExecutor]() {
             auto promise_future = package<value_type_t(value_type_t)>(
-                immediate_executor, testFixture.value_type_to_value_type());
+                std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
 
             return test_fixture_t::move_if_moveonly(promise_future.second)
                 .recover([&check](const auto& f) {
@@ -332,6 +335,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_with_broken_promise, T, test_config
 
         check_failure<future_error>(sut, "broken promise");
         BOOST_REQUIRE(check);
+        BOOST_REQUIRE_GE(1, wrappedExecutor.counter());
+
     }
 }
 
