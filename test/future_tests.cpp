@@ -239,7 +239,10 @@ using test_configuration = boost::mpl::list<
     std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>,
     std::pair<detail::portable_task_system, future_test_helper::copyable_test_fixture>,
     std::pair<detail::portable_task_system, future_test_helper::moveonly_test_fixture>,
-    std::pair<detail::portable_task_system, future_test_helper::void_test_fixture>>;
+    std::pair<detail::portable_task_system, future_test_helper::void_test_fixture>,
+    std::pair<detail::os_default_executor_type, future_test_helper::copyable_test_fixture>,
+    std::pair<detail::os_default_executor_type, future_test_helper::moveonly_test_fixture>,
+    std::pair<detail::os_default_executor_type, future_test_helper::void_test_fixture>>;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_constructed_minimal_fn, T, test_configuration) {
   BOOST_TEST_MESSAGE("running future with minimal" << type_to_string<T>());

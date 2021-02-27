@@ -21,9 +21,15 @@ using namespace stlab;
 using namespace future_test_helper;
 
 using test_configuration = boost::mpl::list<
-    std::pair<detail::immediate_executor_type, future_test_helper::copyable_test_fixture>,
-    std::pair<detail::immediate_executor_type, future_test_helper::moveonly_test_fixture>,
-    std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>>;
+  std::pair<detail::immediate_executor_type, future_test_helper::copyable_test_fixture>,
+  std::pair<detail::immediate_executor_type, future_test_helper::moveonly_test_fixture>,
+  std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>,
+  std::pair<detail::portable_task_system, future_test_helper::copyable_test_fixture>,
+  std::pair<detail::portable_task_system, future_test_helper::moveonly_test_fixture>,
+  std::pair<detail::portable_task_system, future_test_helper::void_test_fixture>,
+  std::pair<detail::os_default_executor_type, future_test_helper::copyable_test_fixture>,
+  std::pair<detail::os_default_executor_type, future_test_helper::moveonly_test_fixture>,
+  std::pair<detail::os_default_executor_type, future_test_helper::void_test_fixture>>;
 
 BOOST_AUTO_TEST_CASE_TEMPLATE(future_single_task, T, test_configuration) {
     BOOST_TEST_MESSAGE("running future single task" << type_to_string<T>());
@@ -37,6 +43,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_single_task, T, test_configuration) {
 
     auto sut = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
 
+    wait_until_future_ready(sut);
 
     BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
     BOOST_REQUIRE_LE(1, wrappedExecutor.counter());
@@ -65,6 +72,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_same_executor_then_on
         auto sut = (async(std::ref(wrappedExecutor), testFixture.void_to_value_type()).*
                     op)(testFixture.value_type_to_value_type());
     
+        wait_until_future_ready(sut);
 
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
         BOOST_REQUIRE_LE(2, wrappedExecutor.counter());
@@ -88,7 +96,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_with_same_executor_then_
         auto l_value = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
         auto sut =
             test_fixture_t::move_if_moveonly(l_value).then(testFixture.value_type_to_value_type());
-    
+
+        wait_until_future_ready(sut);
 
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
         BOOST_REQUIRE_LE(2, wrappedExecutor.counter());
@@ -101,7 +110,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_with_same_executor_then_
         auto l_value = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
         auto sut =
             test_fixture_t::move_if_moveonly(l_value) | testFixture.value_type_to_value_type();
-    
+
+        wait_until_future_ready(sut);
 
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
         BOOST_REQUIRE_LE(2, wrappedExecutor.counter());
@@ -127,6 +137,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_th
         auto sut = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type())
                        .then(std::ref(wrappedExecutor2), testFixture.value_type_to_value_type());
 
+        wait_until_future_ready(sut);
 
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
         BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
@@ -142,6 +153,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_th
         auto sut = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type()) |
                    (executor{std::ref(wrappedExecutor2)} & testFixture.value_type_to_value_type());
 
+        wait_until_future_ready(sut);
 
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
         BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
@@ -168,6 +180,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_th
         auto sut = test_fixture_t::move_if_moveonly(l_value).then(
             std::ref(wrappedExecutor2), testFixture.value_type_to_value_type());
 
+        wait_until_future_ready(sut);
+
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
         BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
         BOOST_REQUIRE_LE(1, wrappedExecutor2.counter());
@@ -182,6 +196,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_th
         auto sut = test_fixture_t::move_if_moveonly(l_value) |
                    (executor{std::ref(wrappedExecutor2)} & testFixture.value_type_to_value_type());
 
+        wait_until_future_ready(sut);
 
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
         BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());

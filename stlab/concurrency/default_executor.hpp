@@ -427,6 +427,8 @@ struct executor_type {
 
 #endif
 
+using os_default_executor_type = executor_type<executor_priority::medium>;
+
 /**************************************************************************************************/
 
 } // namespace detail

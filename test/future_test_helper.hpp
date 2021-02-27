@@ -190,7 +190,7 @@ struct void_test_fixture {
 
     int _expectation = make_new_expectation();
 
-    mutable std::vector<int> _results;
+    mutable std::vector<int> _results{};
 
     void setup() {}
 
@@ -348,7 +348,7 @@ void wait_until_future_fails(F&... f) {
 
 template <typename F>
 void wait_until_future_ready(F& f) {
-    while (!f.get_try()) {
+    while (!f.is_ready()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
@@ -368,6 +368,15 @@ void check_failure(F& f, const char* message) {
                                 return std::string(_m) == std::string(e.what());
                             }));
 }
+
+template <typename E, typename F>
+void check_failure(F& f, stlab::future_error_codes error_code) {
+  BOOST_REQUIRE_EXCEPTION(f.get_try(), E, 
+    [_ec = error_code](const auto& e) {
+    return e.code() == _ec;
+  } );
+}
+
 
 struct test_setup {
     test_setup() {
