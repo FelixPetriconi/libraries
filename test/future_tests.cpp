@@ -257,8 +257,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_constructed_minimal_fn, T, test_configurati
         BOOST_REQUIRE(sut.valid() == true);
         BOOST_REQUIRE(!sut.exception());
 
-        wrappedExecutor.batch();
-
         sut.reset();
         BOOST_REQUIRE(sut.valid() == false);
         BOOST_REQUIRE(sut.is_ready() == false);
@@ -297,7 +295,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(running_future_with_passed_argument, T, test_confi
         BOOST_REQUIRE(sut.valid() == true);
         BOOST_REQUIRE(!sut.exception());
 
-        wrappedExecutor.batch();
+        
 
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
     }
@@ -358,7 +356,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_with_execution, T, test_configuratio
             .then_([&](auto&& p) {
                 p.second.then(testFixture.value_type_to_value_type()).detach();
                 p.first();
-                wrappedExecutor.batch();
+                
                 // wait certain time, until check value is set
                 // BOOST_REQUIRE_EQUAL(true, check);
             })
@@ -367,7 +365,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_with_execution, T, test_configuratio
                     .then(testFixture.value_type_to_value_type())
                     .detach();
                 p.first(testFixture.argument());
-                wrappedExecutor.batch();
+                
                 // BOOST_REQUIRE_EQUAL(testFixture._expectation, check);
             })(promise_future);
     }

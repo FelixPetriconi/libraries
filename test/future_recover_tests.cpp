@@ -53,7 +53,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
             error_check = testFixture.verify_failure(std::move(failedFuture));
             return testFixture.argument();
         });
-        wrappedExecutor.batch();
+        
 
         BOOST_REQUIRE(error_check);
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
@@ -85,7 +85,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                 error_check = testFixture.verify_failure(std::move(failedFuture));
                 return testFixture.argument();
             });
-        wrappedExecutor.batch();
+        
 
         BOOST_REQUIRE(error_check);
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
@@ -105,7 +105,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                 error_check = testFixture.verify_failure(std::move(failedFuture));
                 return testFixture.argument();
             };
-        wrappedExecutor.batch();
+        
 
         BOOST_REQUIRE(error_check);
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
@@ -138,8 +138,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                            return testFixture.argument();
                        });
 
-        wrappedExecutor1.batch();
-        wrappedExecutor2.batch();
 
         BOOST_REQUIRE(error_check);
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
@@ -160,9 +158,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                        error_check = testFixture.verify_failure(std::move(failedFuture));
                        return testFixture.argument();
                    });
-
-        wrappedExecutor1.batch();
-        wrappedExecutor2.batch();
 
         BOOST_REQUIRE(error_check);
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
@@ -196,8 +191,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                 error_check = testFixture.verify_failure(std::move(failedFuture));
                 return testFixture.argument();
             });
-        wrappedExecutor1.batch();
-        wrappedExecutor2.batch();
+
 
         BOOST_REQUIRE(error_check);
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
@@ -220,8 +214,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                        return testFixture.argument();
                    });
 
-        wrappedExecutor1.batch();
-        wrappedExecutor2.batch();
 
         BOOST_REQUIRE(error_check);
         BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
@@ -249,7 +241,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_
 
         auto error_check{false};
         auto interim = async(std::ref(wrappedExecutor), testFixture.void_to_value_type_failing());
-        wrappedExecutor.batch();
+        
 
         wait_until_future_fails<test_exception>(interim);
 
@@ -258,7 +250,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_
                 return testFixture.argument();
             });
 
-        wrappedExecutor.batch();
+        
         wait_until_future_ready(sut);
 
 
@@ -274,7 +266,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_
 
       auto error_check{ false };
       auto interim = async(std::ref(wrappedExecutor), testFixture.void_to_value_type_failing());
-      wrappedExecutor.batch();
+      
 
       wait_until_future_fails<test_exception>(interim);
 
@@ -283,7 +275,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_
         return testFixture.argument();
       };
 
-      wrappedExecutor.batch();
+      
       wait_until_future_ready(sut);
 
 
@@ -373,7 +365,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_after_recover_initialized_o
         test_fixture_t testFixture;
         test_executor_t executor;
 
-        executor_wrapper<test_executor_t> wrappedExecutor{executor};
+        executor_wrapper<test_executor_t> wrappedExecutor(executor);
         auto error_check{false};
         mutex block;
         future<value_type> sut;
@@ -389,8 +381,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_after_recover_initialized_o
                 error_check = testFixture.verify_failure(std::move(failedFuture));
                 return testFixture.argument();
             });
-
-            wrappedExecutor.batch();
         }
 
         wait_until_future_ready(sut);
@@ -431,8 +421,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_
                 error_check = testFixture.verify_failure(std::move(failedFuture));
                 return testFixture.argument();
             });
-
-            wrappedExecutor.batch();
         }
 
         wait_until_future_ready(sut);
@@ -461,8 +449,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_before_recover_initialized_
                 error_check = testFixture.verify_failure(std::move(failedFuture));
                 return testFixture.argument();
             };
-
-            wrappedExecutor.batch();
         }
 
         wait_until_future_ready(sut);
@@ -506,8 +492,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                 return testFixture.argument();
             });
 
-            wrappedExecutor1.batch();
-            wrappedExecutor2.batch();
         }
 
         wait_until_future_ready(sut);
@@ -540,8 +524,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                       return testFixture.argument();
                   });
 
-            wrappedExecutor1.batch();
-            wrappedExecutor2.batch();
         }
 
         wait_until_future_ready(sut);
@@ -589,8 +571,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                     return testFixture.argument();
                 });
 
-            wrappedExecutor1.batch();
-            wrappedExecutor2.batch();
         }
 
         wait_until_future_ready(sut);
@@ -624,8 +604,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
                       return testFixture.argument();
                   });
 
-            wrappedExecutor1.batch();
-            wrappedExecutor2.batch();
         }
 
         wait_until_future_ready(sut);

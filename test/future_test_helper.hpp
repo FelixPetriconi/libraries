@@ -27,6 +27,15 @@ using lock_t = std::unique_lock<std::mutex>;
 
 namespace future_test_helper {
 
+/**************************************************************************************************/
+
+inline auto make_new_expectation() {
+    static int ex{42};
+    return ++ex;
+}
+
+/**************************************************************************************************/
+
 class test_exception : public std::exception {
     std::string _error;
 
@@ -47,12 +56,14 @@ public:
     const char* what() const noexcept override;
 };
 
+/**************************************************************************************************/
+
 struct copyable_test_fixture {
     using value_type = int;
 
     std::size_t _expected_operations{};
 
-    value_type _expectation = 42;
+    value_type _expectation = make_new_expectation();
 
     void setup() {}
 
@@ -72,9 +83,20 @@ struct copyable_test_fixture {
         return [](auto val) { return val; };
     }
 
+    stlab::task<value_type(value_type)> combine_value_type_with_my_argument() const {
+        return [_argument = argument()](auto val) { return val + _argument; };
+    }
+
     bool verify_result(stlab::future<value_type> result) const {
         auto return_value =
             result.is_ready() && !result.exception() && *result.get_try() == _expectation;
+        return return_value;
+    }
+
+    bool verify_result_with_combined_argument(stlab::future<value_type> result,
+                                              const value_type& argument) const {
+        auto return_value = result.is_ready() && !result.exception() &&
+                            *result.get_try() == _expectation + argument;
         return return_value;
     }
 
@@ -102,12 +124,14 @@ struct copyable_test_fixture {
     }
 };
 
+/**************************************************************************************************/
+
 struct moveonly_test_fixture {
     using value_type = stlab::move_only;
 
     std::size_t _expected_operations{};
 
-    value_type _expectation = 42;
+    value_type _expectation = make_new_expectation();
 
     void setup() {}
 
@@ -157,12 +181,14 @@ struct moveonly_test_fixture {
     }
 };
 
+/**************************************************************************************************/
+
 struct void_test_fixture {
     using value_type = void;
 
     std::size_t _expected_operations{};
 
-    int _expectation = 42;
+    int _expectation = make_new_expectation();
 
     mutable std::vector<int> _results;
 
@@ -216,16 +242,37 @@ struct void_test_fixture {
     }
 };
 
+/**************************************************************************************************/
+
 template <typename T>
 std::string type_to_string() {
-  return std::string(" ") + 
-    typeid(typename T::first_type).name() + " " + 
-      typeid(typename T::second_type::value_type).name();
-    
+    return std::string(" ") + typeid(typename T::first_type).name() + " " +
+           typeid(typename T::second_type::value_type).name();
 }
+
+/**************************************************************************************************/
 
 template <typename T>
 class executor_wrapper {
+    T& _executor;
+    std::atomic_size_t _counter{};
+
+public:
+    executor_wrapper(T& executor) : _executor(executor) {}
+
+    template <typename U>
+    void operator()(U&& u) {
+        ++_counter;
+        _executor(std::forward<U>(u));
+    }
+
+    auto counter() const { return _counter.load(); }
+};
+
+/**************************************************************************************************/
+
+template <typename T>
+class executor_wrapper_stepped {
     using queue_t = std::deque<stlab::task<void()>>;
     T& _executor;
     std::atomic_size_t _counter{};
@@ -240,7 +287,7 @@ class executor_wrapper {
     }
 
 public:
-    executor_wrapper(T& executor) : _executor(executor) {}
+    executor_wrapper_stepped(T& executor) : _executor(executor) {}
 
     template <typename U>
     void operator()(U&& u) {
@@ -276,6 +323,8 @@ public:
     auto counter() const { return _counter.load(); }
 };
 
+/**************************************************************************************************/
+
 namespace impl {
 
 template <typename E, typename F>
@@ -295,6 +344,8 @@ void wait_until_future_fails(F&... f) {
     (void)std::initializer_list<int>{(impl::wait_until_this_future_fails<E>(f), 0)...};
 }
 
+/**************************************************************************************************/
+
 template <typename F>
 void wait_until_future_ready(F& f) {
     while (!f.get_try()) {
@@ -302,15 +353,21 @@ void wait_until_future_ready(F& f) {
     }
 }
 
+/**************************************************************************************************/
+
+template <typename... F>
+void wait_until_future_completed(F&... f) {
+    (void)std::initializer_list<int>{(wait_until_future_ready(f), 0)...};
+}
+
+/**************************************************************************************************/
 
 template <typename E, typename F>
 void check_failure(F& f, const char* message) {
-  BOOST_REQUIRE_EXCEPTION(f.get_try(), E, ([_m = message](const auto& e) {
-    return std::string(_m) == std::string(e.what());
-  }));
+    BOOST_REQUIRE_EXCEPTION(f.get_try(), E, ([_m = message](const auto& e) {
+                                return std::string(_m) == std::string(e.what());
+                            }));
 }
-
-
 
 struct test_setup {
     test_setup() {
@@ -329,11 +386,6 @@ struct test_fixture {
     ~test_fixture() {}
 
     stlab::future<T> sut;
-
-    template <typename... F>
-    void wait_until_future_completed(F&... f) {
-        (void)std::initializer_list<int>{(wait_until_future_ready(f), 0)...};
-    }
 
     template <typename F>
     auto wait_until_future_r_completed(F& f) {
@@ -358,8 +410,6 @@ struct test_fixture {
         BOOST_REQUIRE(!f.exception());
         check_valid_future(fs...);
     }
-
-
 
     void wait_until_all_tasks_completed() {
         while (_task_counter.load() != 0) {

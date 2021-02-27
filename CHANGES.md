@@ -3,7 +3,7 @@
    - [#363]:(https://github.com/stlab/libraries/issues/363) Wrong version in the 1.6.0 release
 
 ## v1.6.0 - 2021 - February 9
- - Backport the library to support C++14 and later
+ - Backport of the library to support C++14 and later
  - Better auto-configuration - no need for compiler flags.
  - Supported for threaded wasm using the portable tasking system (auto-configured).
 
