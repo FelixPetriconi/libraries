@@ -40,13 +40,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
-    using value_type = typename test_fixture_t::value_type;
+    using value_type_t = typename test_fixture_t::value_type;
 
-    using task_t = task<value_type(future<value_type>)>;
-    using op_t = future<value_type> (future<value_type>::*)(task_t &&)&&;
+    using task_t = task<value_type_t(future<value_type_t>)>;
+    using op_t = future<value_type_t> (future<value_type_t>::*)(task_t &&)&&;
 
-    op_t ops[] = {static_cast<op_t>(&future<value_type>::template recover<task_t>),
-                  static_cast<op_t>(&future<value_type>::template operator^<task_t>)};
+    op_t ops[] = {static_cast<op_t>(&future<value_type_t>::template recover<task_t>),
+                  static_cast<op_t>(&future<value_type_t>::template operator^<task_t>)};
 
     for (const auto& op : ops) {
         test_fixture_t testFixture{0};
@@ -56,7 +56,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(
 
         auto error_check{false};
         auto sut = (async(std::ref(wrappedExecutor), testFixture.void_to_value_type_failing()).*
-                    op)([&](future<value_type> failedFuture) {
+                    op)([&](future<value_type_t> failedFuture) {
             error_check = testFixture.verify_failure(std::move(failedFuture));
             return testFixture.argument();
         });
@@ -328,23 +328,26 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_with_broken_promise, T, test_config
         test_fixture_t testFixture;
 
         auto check{false};
-        auto sut = [&check, &testFixture, &wrappedExecutor, &op](auto&&) {
-            auto promise_future = package<value_type_t(value_type_t)>(
-                std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
+        auto sut = static_if(bool_v<std::is_same<value_type_t, void>::value>)
+                       .then_([&wrappedExecutor, &check, &op](auto&& testFixture) {
+                           auto promise_future = testFixture.create_value_type_to_value_type_package(
+                               std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
 
-            return (test_fixture_t::move_if_moveonly(promise_future.second).*op)(
-                [&check](const auto& f) {
-                    check = true;
-                    try {
-                      return static_if(bool_v<std::is_same_v<value_type_t, void>>)
-                        .then_([&](auto&&) { (void) f.get_try(); })
-                        .else_([&](auto&&) { return *f.get_try(); })(std::ignore);
+                           return (std::move(promise_future.second).*op)([&check](auto f) {
+                               check = true;
+                               (void)f.get_try();
+                           });
+                       })
+                       .else_([&wrappedExecutor, &check, &op](auto&& testFixture) {
+                           auto promise_future = testFixture.create_value_type_to_value_type_package(
+                               std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
 
-                    } catch (const exception&) {
-                        throw;
-                    }
-                });
-        }(std::ignore);
+                           return (test_fixture_t::move_if_moveonly(promise_future.second).*
+                                   op)([&check](auto f) {
+                               check = true;
+                               return *test_fixture_t::move_if_moveonly(f).get_try();
+                           });
+                       })(testFixture);
 
         wait_until_future_ready(sut);
 
@@ -371,13 +374,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_after_recover_initialized_o
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
-    using value_type = typename test_fixture_t::value_type;
+    using value_type_t = typename test_fixture_t::value_type;
 
-    using task_t = task<value_type(future<value_type>)>;
-    using op_t = future<value_type> (future<value_type>::*)(task_t &&)&&;
+    using task_t = task<value_type_t(future<value_type_t>)>;
+    using op_t = future<value_type_t> (future<value_type_t>::*)(task_t &&)&&;
 
-    op_t ops[] = {static_cast<op_t>(&future<value_type>::template recover<task_t>),
-                  static_cast<op_t>(&future<value_type>::template operator^<task_t>)};
+    op_t ops[] = {static_cast<op_t>(&future<value_type_t>::template recover<task_t>),
+                  static_cast<op_t>(&future<value_type_t>::template operator^<task_t>)};
 
     for (const auto& op : ops) {
         test_fixture_t testFixture;
@@ -386,12 +389,12 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_failure_after_recover_initialized_o
         executor_wrapper<test_executor_t> wrappedExecutor(executor);
         auto error_check{false};
         mutex block;
-        future<value_type> sut;
+        future<value_type_t> sut;
 
         {
             lock_t hold(block);
             sut = (async(std::ref(wrappedExecutor),
-                         [&_block = block]() -> value_type {
+                         [&_block = block]() -> value_type_t {
                              lock_t lock(_block);
                              throw test_exception("failure");
                          }).*

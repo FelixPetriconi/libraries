@@ -56,13 +56,13 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_same_executor_then_on
                        << type_to_string<T>());
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
-    using value_type = typename test_fixture_t::value_type;
+    using value_type_t = typename test_fixture_t::value_type;
+    using task_t = typename test_fixture_t::task_t;
 
-    using task_t = task<value_type(value_type)>;
-    using op_t = future<value_type> (future<value_type>::*)(task_t &&)&&;
+    using op_t = future<value_type_t> (future<value_type_t>::*)(task_t &&)&&;
 
-    op_t ops[] = {static_cast<op_t>(&future<value_type>::template then<task_t>),
-                  static_cast<op_t>(&future<value_type>::template operator|<task_t>)};
+    op_t ops[] = {static_cast<op_t>(&future<value_type_t>::template then<task_t>),
+                  static_cast<op_t>(&future<value_type_t>::template operator|<task_t>)};
 
     for (const auto& op : ops) {
         test_fixture_t testFixture{2};
@@ -86,7 +86,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_with_same_executor_then_
                        << type_to_string<T>());
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
-    using value_type = typename test_fixture_t::value_type;
 
     {
         test_fixture_t testFixture{2};
@@ -126,7 +125,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_th
 
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
-    using value_type = typename test_fixture_t::value_type;
     {
         test_fixture_t testFixture{2};
         test_executor_t executor1, executor2;
@@ -168,7 +166,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_value_type_to_void_on_different_executor_th
                        << type_to_string<T>());
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
-    using value_type = typename test_fixture_t::value_type;
 
     {
         test_fixture_t testFixture{2};
@@ -229,8 +226,8 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_with_copyable_value_split_with_same_executo
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
     using value_type = typename test_fixture_t::value_type;
+    using task_t = typename test_fixture_t::task_t;
 
-    using task_t = task<value_type(value_type)>;
     using op_t = future<value_type> (future<value_type>::*)(task_t &&) const&;
 
     op_t ops[] = {static_cast<op_t>(&future<value_type>::template then<task_t>),
@@ -268,7 +265,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_with_copyable_value_split_with_different_ex
     << type_to_string<T>());
   using test_executor_t = typename T::first_type;
   using test_fixture_t = typename T::second_type;
-  using value_type = typename test_fixture_t::value_type;
 
   {
     test_fixture_t testFixture;

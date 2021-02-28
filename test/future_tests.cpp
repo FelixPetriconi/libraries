@@ -19,6 +19,7 @@
 #include <stlab/test/model.hpp>
 
 #include <deque>
+#include <type_traits>
 
 using namespace stlab;
 using namespace future_test_helper;
@@ -282,16 +283,14 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(running_future_with_passed_argument, T, test_confi
 
     test_setup setup;
     {
-        sut_t sut;
-
-        static_if(bool_v<std::is_same_v<value_type_t, void>>)
-            .then_([&](auto&&) {
-                sut = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
+        sut_t sut = static_if(bool_v<std::is_same<value_type_t, void>::value>)
+            .then_([&wrappedExecutor](auto&& testFixture) {
+                return async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
             })
-            .else_([&](auto&&) {
-                sut = async(std::ref(wrappedExecutor), testFixture.value_type_to_value_type(),
+            .else_([&wrappedExecutor](auto&& testFixture) {
+                return async(std::ref(wrappedExecutor), testFixture.value_type_to_value_type(),
                             testFixture.argument());
-            })(std::ignore);
+            })(testFixture);
 
         wait_until_future_ready(sut);
 
@@ -311,7 +310,6 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_without_execution, T, test_configura
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
     using value_type_t = typename test_fixture_t::value_type;
-    using sut_t = stlab::future<value_type_t>;
 
     test_fixture_t testFixture;
     test_executor_t executor;
@@ -320,18 +318,21 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_without_execution, T, test_configura
     annotate_counters counter;
     bool check = true;
     {
-        auto promise_future = package<value_type_t(value_type_t)>(
-            std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
+        static_if(bool_v<std::is_same<value_type_t, void>::value>)
+            .then_([&wrappedExecutor](auto&& testFixture) {
+                auto promise_future = testFixture.create_value_type_to_value_type_package(
+                    std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
 
-        static_if(bool_v<std::is_same_v<value_type_t, void>>)
-            .then_([&](auto&&) {
                 promise_future.second.then(testFixture.value_type_to_value_type()).detach();
             })
-            .else_([&](auto&&) {
+            .else_([&wrappedExecutor](auto&& testFixture) {
+                auto promise_future = testFixture.create_value_type_to_value_type_package(
+                    std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
+
                 test_fixture_t::move_if_moveonly(promise_future.second)
                     .then(testFixture.value_type_to_value_type())
                     .detach();
-            })(std::ignore);
+            })(testFixture);
     }
     // TODO check should be set to false within future
     BOOST_REQUIRE_EQUAL(1, counter.remaining());
@@ -344,7 +345,7 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_with_execution, T, test_configuratio
     using test_executor_t = typename T::first_type;
     using test_fixture_t = typename T::second_type;
     using value_type_t = typename test_fixture_t::value_type;
-    using sut_t = stlab::future<value_type_t>;
+
     test_fixture_t testFixture;
     test_executor_t executor;
     executor_wrapper<test_executor_t> wrappedExecutor{executor};
@@ -352,10 +353,10 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_detach_with_execution, T, test_configuratio
     annotate_counters counter;
 
     {
-        auto promise_future = package<value_type_t(value_type_t)>(
+        auto promise_future = testFixture.create_value_type_to_value_type_package(
             std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
         // TODO check thread safe result
-        static_if(bool_v<std::is_same_v<value_type_t, void>>)
+        static_if(bool_v<std::is_same<value_type_t, void>::value>)
             .then_([&](auto&& p) {
                 p.second.then(testFixture.value_type_to_value_type()).detach();
                 p.first();

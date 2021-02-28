@@ -60,6 +60,7 @@ public:
 
 struct copyable_test_fixture {
     using value_type = int;
+    using task_t = stlab::task<int(int)>;
 
     std::size_t _expected_operations{};
 
@@ -71,36 +72,41 @@ struct copyable_test_fixture {
 
     auto argument() const { return _expectation; }
 
-    stlab::task<value_type()> void_to_value_type() const {
+    template <typename E, typename F>
+    auto create_value_type_to_value_type_package(E&& executor, F&& f) {
+      return stlab::package<value_type(value_type)>(std::forward<E>(executor), std::forward<F>(f));
+    }
+
+    stlab::task<int()> void_to_value_type() const {
         return [_val = _expectation] { return _val; };
     }
 
-    stlab::task<value_type()> void_to_value_type_failing() const {
-        return []() -> value_type { throw test_exception("failure"); };
+    stlab::task<int()> void_to_value_type_failing() const {
+        return []() -> int { throw test_exception("failure"); };
     }
 
-    stlab::task<value_type(value_type)> value_type_to_value_type() const {
+    stlab::task<int(int)> value_type_to_value_type() const {
         return [](auto val) { return val; };
     }
 
-    stlab::task<value_type(value_type)> combine_value_type_with_my_argument() const {
+    stlab::task<int(int)> combine_value_type_with_my_argument() const {
         return [_argument = argument()](auto val) { return val + _argument; };
     }
 
-    bool verify_result(stlab::future<value_type> result) const {
+    bool verify_result(stlab::future<int> result) const {
         auto return_value =
             result.is_ready() && !result.exception() && *result.get_try() == _expectation;
         return return_value;
     }
 
-    bool verify_result_with_combined_argument(stlab::future<value_type> result,
-                                              const value_type& argument) const {
+    bool verify_result_with_combined_argument(stlab::future<int> result,
+                                              const int& argument) const {
         auto return_value = result.is_ready() && !result.exception() &&
                             *result.get_try() == _expectation + argument;
         return return_value;
     }
 
-    bool verify_failure(stlab::future<value_type> result) const {
+    bool verify_failure(stlab::future<int> result) const {
         auto return_value{false};
         try {
             if (result.exception()) {
@@ -128,6 +134,7 @@ struct copyable_test_fixture {
 
 struct moveonly_test_fixture {
     using value_type = stlab::move_only;
+    using task_t = stlab::task<stlab::move_only(stlab::move_only)>;
 
     std::size_t _expected_operations{};
 
@@ -138,6 +145,12 @@ struct moveonly_test_fixture {
     void tear_down() {}
 
     auto argument() const { return value_type{_expectation.member()}; }
+
+    template <typename E, typename F>
+    auto create_value_type_to_value_type_package(E&& executor, F&& f) {
+      return stlab::package<value_type(value_type)>(std::forward<E>(executor), std::forward<F>(f));
+    }
+
 
     stlab::task<value_type()> void_to_value_type() const {
         return [_val = _expectation.member()] { return value_type{_val}; };
@@ -185,6 +198,7 @@ struct moveonly_test_fixture {
 
 struct void_test_fixture {
     using value_type = void;
+    using task_t = stlab::task<void()>;
 
     std::size_t _expected_operations{};
 
@@ -197,6 +211,11 @@ struct void_test_fixture {
     void tear_down() {}
 
     void argument() {}
+
+    template <typename E, typename F>
+    auto create_value_type_to_value_type_package(E&& executor, F&& f) {
+      return stlab::package<void()>(std::forward<E>(executor), std::forward<F>(f));
+    }
 
     stlab::task<value_type()> void_to_value_type() const {
         return [this] { _results.push_back(_expectation); };

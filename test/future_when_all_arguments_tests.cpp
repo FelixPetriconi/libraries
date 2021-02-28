@@ -6,36 +6,76 @@
 
 /**************************************************************************************************/
 
+#include <boost/mpl/list.hpp>
 #include <boost/test/unit_test.hpp>
 
 #include <stlab/concurrency/default_executor.hpp>
 #include <stlab/concurrency/future.hpp>
 #include <stlab/concurrency/utility.hpp>
 
-#include <string>
-
 #include "future_test_helper.hpp"
-#include <stlab/test/model.hpp>
 
 using namespace stlab;
 using namespace future_test_helper;
 
-#if 0
+using test_configuration = boost::mpl::list<
+    std::pair<detail::immediate_executor_type, future_test_helper::copyable_test_fixture>,
+    std::pair<detail::immediate_executor_type, future_test_helper::moveonly_test_fixture>,
+    std::pair<detail::immediate_executor_type, future_test_helper::void_test_fixture>,
+    std::pair<detail::portable_task_system, future_test_helper::copyable_test_fixture>,
+    std::pair<detail::portable_task_system, future_test_helper::moveonly_test_fixture>,
+    std::pair<detail::portable_task_system, future_test_helper::void_test_fixture>,
+    std::pair<detail::os_default_executor_type, future_test_helper::copyable_test_fixture>,
+    std::pair<detail::os_default_executor_type, future_test_helper::moveonly_test_fixture>,
+    std::pair<detail::os_default_executor_type, future_test_helper::void_test_fixture>>;
 
-BOOST_FIXTURE_TEST_SUITE(future_when_all_args_int, test_fixture<int>)
-BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_one_element) {
-    BOOST_TEST_MESSAGE("running future when_all int with one element");
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_when_all_args_with_one_element_on_same_executor,
+                              T,
+                              test_configuration) {
+    BOOST_TEST_MESSAGE("future when_all args with one element on same executor"
+                       << type_to_string<T>());
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
 
-    auto f1 = async(make_executor<0>(), [] { return 42; });
-    sut = when_all(make_executor<1>(), [](auto x) { return x + x; }, f1);
+    test_fixture_t testFixture{2};
+    test_executor_t executor;
+    executor_wrapper<test_executor_t> wrappedExecutor{executor};
 
-    check_valid_future(sut);
+    auto f1 = async(std::ref(wrappedExecutor), testFixture.void_to_value_type());
+    auto sut =
+        when_all(std::ref(wrappedExecutor), testFixture.value_type_to_value_type(), std::move(f1));
+
     wait_until_future_completed(sut);
 
-    BOOST_REQUIRE_EQUAL(42 + 42, *sut.get_try());
-    BOOST_REQUIRE_LE(1, custom_scheduler<0>::usage_counter());
-    BOOST_REQUIRE_LE(1, custom_scheduler<1>::usage_counter());
+    BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+    BOOST_REQUIRE_LE(2, wrappedExecutor.counter());
 }
+
+BOOST_AUTO_TEST_CASE_TEMPLATE(future_when_all_args_with_one_element_on_different_executor,
+                              T,
+                              test_configuration) {
+    BOOST_TEST_MESSAGE("future when_all args with one element on different executor"
+                       << type_to_string<T>());
+    using test_executor_t = typename T::first_type;
+    using test_fixture_t = typename T::second_type;
+
+    test_fixture_t testFixture{2};
+    test_executor_t executor1, executor2;
+    executor_wrapper<test_executor_t> wrappedExecutor1{executor1};
+    executor_wrapper<test_executor_t> wrappedExecutor2{executor2};
+
+    auto f1 = async(std::ref(wrappedExecutor1), testFixture.void_to_value_type());
+    auto sut =
+        when_all(std::ref(wrappedExecutor2), testFixture.value_type_to_value_type(), std::move(f1));
+
+    wait_until_future_completed(sut);
+
+    BOOST_REQUIRE(testFixture.verify_result(std::move(sut)));
+    BOOST_REQUIRE_LE(1, wrappedExecutor1.counter());
+    BOOST_REQUIRE_LE(1, wrappedExecutor2.counter());
+}
+
+#if 0
 
 BOOST_AUTO_TEST_CASE(future_when_all_args_int_with_many_elements) {
     BOOST_TEST_MESSAGE("running future when_all args int with many elements");
