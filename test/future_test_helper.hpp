@@ -57,6 +57,10 @@ public:
 };
 
 /**************************************************************************************************/
+// The following three types are provide utilities for the three test configurations, copyable,
+// move-only and void types. Since gcc does not like function signatures value_type(value_type)
+// with value_type == void, some extra code is necessary.
+/**************************************************************************************************/
 
 struct copyable_test_fixture {
     using value_type = int;
@@ -148,7 +152,7 @@ struct moveonly_test_fixture {
 
     template <typename E, typename F>
     auto create_value_type_to_value_type_package(E&& executor, F&& f) {
-      return stlab::package<value_type(value_type)>(std::forward<E>(executor), std::forward<F>(f));
+        return stlab::package<value_type(value_type)>(std::forward<E>(executor), std::forward<F>(f));
     }
 
 
@@ -203,8 +207,8 @@ struct void_test_fixture {
     std::size_t _expected_operations{};
 
     int _expectation = make_new_expectation();
-
     mutable std::vector<int> _results{};
+    mutable std::mutex _mutex{};
 
     void setup() {}
 
@@ -218,7 +222,10 @@ struct void_test_fixture {
     }
 
     stlab::task<value_type()> void_to_value_type() const {
-        return [this] { _results.push_back(_expectation); };
+        return [this]()mutable {
+            std::unique_lock<std::mutex> guard(_mutex);
+            _results.push_back(_expectation);
+        };
     }
 
     stlab::task<value_type(value_type)> value_type_to_value_type() const {

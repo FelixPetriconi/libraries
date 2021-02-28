@@ -36,11 +36,10 @@ class task;
 
 template <class R, class... Args>
 class task<R(Args...)> {
-
     template <class F>
-    constexpr static bool maybe_empty = std::is_pointer<std::decay_t<F>>::value ||
-                      std::is_member_pointer<std::decay_t<F>>::value ||
-                      std::is_same<std::function<R(Args...)>, std::decay_t<F>>::value;
+    constexpr static bool maybe_empty =
+        std::is_pointer<std::decay_t<F>>::value || std::is_member_pointer<std::decay_t<F>>::value ||
+        std::is_same<std::function<R(Args...)>, std::decay_t<F>>::value;
 
     template <class F>
     constexpr static auto is_empty(const F& f) -> std::enable_if_t<maybe_empty<F>, bool> {
@@ -57,8 +56,8 @@ class task<R(Args...)> {
         void (*move_ctor)(void*, void*) noexcept;
         R (*invoke)(void*, Args&&...);
         const std::type_info& (*target_type)() noexcept;
-        void* (*pointer)(void*)noexcept;
-        const void* (*const_pointer)(const void*)noexcept;
+        void* (*pointer)(void*) noexcept;
+        const void* (*const_pointer)(const void*) noexcept;
     };
 
     template <class F, bool Small>
@@ -85,8 +84,8 @@ class task<R(Args...)> {
 #if defined(__GNUC__) && __GNUC__ < 7 && !defined(__clang__)
         static const concept_t _vtable;
 #else
-        static constexpr concept_t _vtable = { dtor, move_ctor, invoke,
-                                             target_type, pointer, const_pointer };
+        static constexpr concept_t _vtable = {dtor,        move_ctor, invoke,
+                                              target_type, pointer,   const_pointer};
 #endif
         F _f;
     };
@@ -115,8 +114,8 @@ class task<R(Args...)> {
 #if defined(__GNUC__) && __GNUC__ < 7 && !defined(__clang__)
         static const concept_t _vtable;
 #else
-        static constexpr concept_t _vtable = { dtor, move_ctor, invoke,
-                                             target_type, pointer, const_pointer };
+        static constexpr concept_t _vtable = {dtor,        move_ctor, invoke,
+                                              target_type, pointer,   const_pointer};
 #endif
 
         std::unique_ptr<F> _p;
@@ -133,8 +132,8 @@ class task<R(Args...)> {
 #if defined(__GNUC__) && __GNUC__ < 7 && !defined(__clang__)
     static const concept_t _vtable;
 #else
-    static constexpr concept_t _vtable = { dtor, move_ctor, invoke,
-                                         target_type_, pointer, const_pointer };
+    static constexpr concept_t _vtable = {dtor,         move_ctor, invoke,
+                                          target_type_, pointer,   const_pointer};
 #endif
 
     const concept_t* _vtable_ptr = &_vtable;
@@ -146,8 +145,8 @@ class task<R(Args...)> {
         data on my MacBook Pro. tasks are move only object so the exepectation is that moving the
         funciton object is proportional to the sizeof the object. We try to construct tasks emplace
         and so they are rarely moved (need to review the code to make sure that is true). The
-        concept_t will consume one word so this gives us 31 words (on a 64 bit machine) for the model.
-        Probably excessive but still allows 16 tasks on a cache line
+        concept_t will consume one word so this gives us 31 words (on a 64 bit machine) for the
+       model. Probably excessive but still allows 16 tasks on a cache line
 
         I welcome empirical data from an actual system on a better size.
 
@@ -166,7 +165,7 @@ public:
         _vtable_ptr->move_ctor(&x._model, &_model);
     }
 
-    template <class F>
+    template <class F, std::enable_if_t<!std::is_same<std::decay_t<F>, task>::value, bool> = true>
     task(F&& f) {
         using f_t = std::decay_t<F>;
         using model_t = model<f_t, sizeof(model<f_t, true>) <= small_object_size>;
@@ -214,7 +213,7 @@ public:
                    nullptr;
     }
 
-    R operator()(Args... args) const { return const_cast<task*>(this)->_vtable_ptr->invoke(&(const_cast<task*>(this)->_model), std::forward<Args>(args)...); }
+    R operator()(Args... args) { return _vtable_ptr->invoke(&_model, std::forward<Args>(args)...); }
 
     friend inline void swap(task& x, task& y) { return x.swap(y); }
     friend inline bool operator==(const task& x, std::nullptr_t) { return !static_cast<bool>(x); }
@@ -228,12 +227,12 @@ public:
 // In C++17 constexpr implies inline and these definitions are deprecated
 
 #if defined(__GNUC__) && __GNUC__ < 7 && !defined(__clang__)
-    template <class R, class... Args>
-    const typename task<R(Args...)>::concept_t task<R(Args...)>::_vtable = { dtor, move_ctor, invoke,
-                                                                           target_type_, pointer, const_pointer };
+template <class R, class... Args>
+const typename task<R(Args...)>::concept_t task<R(Args...)>::_vtable = {
+    dtor, move_ctor, invoke, target_type_, pointer, const_pointer};
 #else
-    template <class R, class... Args>
-    const typename task<R(Args...)>::concept_t task<R(Args...)>::_vtable;
+template <class R, class... Args>
+const typename task<R(Args...)>::concept_t task<R(Args...)>::_vtable;
 #endif
 
 #ifdef _MSC_VER
@@ -252,13 +251,13 @@ const typename task<R(Args...)>::concept_t task<R(Args...)>::model<F, true>::_vt
 
 template <class R, class... Args>
 template <class F>
-const typename task<R(Args...)>::concept_t task<R(Args...)>::template model<F, false>::_vtable = { dtor, move_ctor, invoke,
-                                                                                                 target_type, pointer, const_pointer };
+const typename task<R(Args...)>::concept_t task<R(Args...)>::template model<F, false>::_vtable = {
+    dtor, move_ctor, invoke, target_type, pointer, const_pointer};
 
 template <class R, class... Args>
 template <class F>
-const typename task<R(Args...)>::concept_t task<R(Args...)>::template model<F, true>::_vtable = { dtor, move_ctor, invoke,
-                                                                                                target_type, pointer, const_pointer };
+const typename task<R(Args...)>::concept_t task<R(Args...)>::template model<F, true>::_vtable = {
+    dtor, move_ctor, invoke, target_type, pointer, const_pointer};
 #else
 
 template <class R, class... Args>
