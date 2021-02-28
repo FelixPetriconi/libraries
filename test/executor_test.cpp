@@ -287,26 +287,26 @@ BOOST_AUTO_TEST_CASE(all_tasks_will_be_executed_according_to_their_prio) {
 
 BOOST_AUTO_TEST_CASE(MeasureTiming) {
     std::vector<int> results;
-    const auto iterations = 300'000;
-    results.resize(iterations * 3);
-    atomic_bool done{false};
+    const auto test_iterations = 300'000;
+    results.resize(test_iterations * 3);
+    atomic_bool local_done{false};
     condition_variable ready;
     atomic_int counter{0};
 
     auto start = chrono::high_resolution_clock::now();
 
-    for (auto i = 0; i < iterations; ++i) {
+    for (auto i = 0; i < test_iterations; ++i) {
         low_executor([_i = i, &results,&counter] {
             results[_i] = 1;
             fibonacci<mp::cpp_int>(fiboN);
             ++counter;
         });
-        default_executor([_i = i + iterations, &results,&counter] {
+        default_executor([_i = i + test_iterations, &results,&counter] {
             results[_i] = 2;
             fibonacci<mp::cpp_int>(fiboN);
             ++counter;
         });
-        high_executor([_i = i + iterations * 2, &results,&counter] {
+        high_executor([_i = i + test_iterations * 2, &results,&counter] {
             results[_i] = 3;
             fibonacci<mp::cpp_int>(fiboN);
             ++counter;
@@ -317,7 +317,7 @@ BOOST_AUTO_TEST_CASE(MeasureTiming) {
     low_executor([&] {
         {
             unique_lock<mutex> lock{block};
-            done = true;
+            local_done = true;
 
             ready.notify_one();
         }
@@ -325,12 +325,12 @@ BOOST_AUTO_TEST_CASE(MeasureTiming) {
 
 
     unique_lock<mutex> lock{block};
-    while (!done) ready.wait(lock);
+    while (!local_done) ready.wait(lock);
 
     auto stop = std::chrono::high_resolution_clock::now();
     std::cout << "\nPerformance measuring: " << std::chrono::duration<double>(stop - start).count() << "s\n";
 
-    while (counter < 3*iterations) {
+    while (counter < 3*test_iterations) {
         rest();
     }
 }

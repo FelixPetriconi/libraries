@@ -328,16 +328,16 @@ BOOST_AUTO_TEST_CASE_TEMPLATE(future_recover_with_broken_promise, T, test_config
         test_fixture_t testFixture;
 
         auto check{false};
-        auto sut = [&check, &testFixture, &wrappedExecutor](auto&&) {
+        auto sut = [&check, &testFixture, &wrappedExecutor, &op](auto&&) {
             auto promise_future = package<value_type_t(value_type_t)>(
                 std::ref(wrappedExecutor), testFixture.value_type_to_value_type());
 
-            return test_fixture_t::move_if_moveonly(promise_future.second)
-                .recover([&check](const auto& f) {
+            return (test_fixture_t::move_if_moveonly(promise_future.second).*op)(
+                [&check](const auto& f) {
                     check = true;
                     try {
                       return static_if(bool_v<std::is_same_v<value_type_t, void>>)
-                        .then_([&](auto&&) { return f.get_try(); })
+                        .then_([&](auto&&) { (void) f.get_try(); })
                         .else_([&](auto&&) { return *f.get_try(); })(std::ignore);
 
                     } catch (const exception&) {

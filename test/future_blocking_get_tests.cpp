@@ -154,9 +154,8 @@ BOOST_AUTO_TEST_CASE(future_blocking_get_moveonly_value_and_timeout) {
 
 BOOST_AUTO_TEST_CASE(future_blocking_get_moveonly_value_error_case_and_timeout) {
   BOOST_TEST_MESSAGE("future blocking_get with moveonly value and timeout set");
-  auto answer = [] {
+  auto answer = []()->move_only {
     throw test_exception("failure");
-    return stlab::move_only(42);
   };
 
   stlab::future<stlab::move_only> f = stlab::async(stlab::default_executor, answer);
